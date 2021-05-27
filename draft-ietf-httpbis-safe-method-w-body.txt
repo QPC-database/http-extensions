@@ -6,8 +6,8 @@ HTTP                                                          J. Reschke
 Internet-Draft                                                greenbytes
 Updates: 5323 (if approved)                                  A. Malhotra
 Intended status: Standards Track                                        
-Expires: 26 November 2021                                     J.M. Snell
-                                                             25 May 2021
+Expires: 28 November 2021                                     J.M. Snell
+                                                             27 May 2021
 
 
                            HTTP SEARCH Method
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 26 November 2021.
+   This Internet-Draft will expire on 28 November 2021.
 
 Copyright Notice
 
@@ -351,13 +351,14 @@ Appendix A.  Change Log
 A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
 
    *  In Section 3, adjust the grammar to just define the field value
-      (https://github.com/httpwg/http-core/issues/1470)
+      (https://github.com/httpwg/http-extensions/issues/1470)
 
    *  Update to latest HTTP core spec, and adjust terminology
-      accordingly (https://github.com/httpwg/http-core/issues/1473)
+      accordingly (https://github.com/httpwg/http-extensions/
+      issues/1473)
 
    *  Reference RFC 8174 and markup bcp14 terms
-      (https://github.com/httpwg/http-core/issues/1497)
+      (https://github.com/httpwg/http-extensions/issues/1497)
 
 Authors' Addresses
 
