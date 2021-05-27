@@ -337,9 +337,9 @@ Table of Contents
 
    [RFCHTTP]  Fielding, R., Ed., Nottingham, M., Ed., and J. Reschke,
               Ed., "HTTP Semantics", Work in Progress, Internet-Draft,
-              draft-ietf-httpbis-semantics-15, 30 March 2021,
+              draft-ietf-httpbis-semantics-16, 27 May 2021,
               <https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-
-              semantics-15.txt>.
+              semantics-16.txt>.
 
 Appendix A.  Change Log
 
@@ -359,6 +359,9 @@ A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
 
    *  Reference RFC 8174 and markup bcp14 terms
       (https://github.com/httpwg/http-extensions/issues/1497)
+
+   *  Update HTTP reference (https://github.com/httpwg/http-extensions/
+      issues/1524)
 
 Authors' Addresses
 
