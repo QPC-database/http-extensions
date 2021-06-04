@@ -5,10 +5,10 @@
 HTTP                                                     A. Backman, Ed.
 Internet-Draft                                                    Amazon
 Intended status: Standards Track                               J. Richer
-Expires: 4 December 2021                             Bespoke Engineering
+Expires: 6 December 2021                             Bespoke Engineering
                                                                M. Sporny
                                                           Digital Bazaar
-                                                             2 June 2021
+                                                             4 June 2021
 
 
                          Signing HTTP Messages
@@ -53,7 +53,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 4 December 2021.
+   This Internet-Draft will expire on 6 December 2021.
 
 Copyright Notice
 
@@ -1113,7 +1113,7 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
    An HTTP message signature MUST use both headers: the "Signature" HTTP
    header field contains the signature value, while the "Signature-
    Input" HTTP header field identifies the covered content and
-   parameters that describe how the signature was generated.  The Each
+   parameters that describe how the signature was generated.  Each
    header MAY contain multiple labeled values, where the labels
    determine the correlation between the "Signature" and "Signature-
    Input" fields.

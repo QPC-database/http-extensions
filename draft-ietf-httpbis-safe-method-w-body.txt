@@ -6,8 +6,8 @@ HTTP                                                          J. Reschke
 Internet-Draft                                                greenbytes
 Updates: 5323 (if approved)                                  A. Malhotra
 Intended status: Standards Track                                        
-Expires: 4 December 2021                                      J.M. Snell
-                                                             2 June 2021
+Expires: 6 December 2021                                      J.M. Snell
+                                                             4 June 2021
 
 
                            HTTP SEARCH Method
@@ -20,11 +20,11 @@ Abstract
 
 Editorial Note
 
+   This note is to be removed before publishing as an RFC.
+
    Discussion of this draft takes place on the HTTP working group
    mailing list (ietf-http-wg@w3.org), which is archived at
    https://lists.w3.org/Archives/Public/ietf-http-wg/.
-
-   This note is to be removed before publishing as an RFC.
 
    Working Group information can be found at https://httpwg.org/; source
    code and issues list for this draft can be found at
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 4 December 2021.
+   This Internet-Draft will expire on 6 December 2021.
 
 Copyright Notice
 
@@ -343,10 +343,10 @@ Table of Contents
 
 Appendix A.  Change Log
 
+   This section is to be removed before publishing as an RFC.
+
 
    // (see https://trac.tools.ietf.org/tools/xml2rfc/trac/ticket/622)
-
-   This section is to be removed before publishing as an RFC.
 
 A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
 
