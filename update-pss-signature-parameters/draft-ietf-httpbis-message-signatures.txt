@@ -1244,6 +1244,16 @@ Table of Contents
    policy [RFC8126] and shall follow the template presented in
    Section 5.1.1.
 
+   Algorithms referenced by algorithm identifiers have to be fully
+   defined with all parameters fixed.  Algorithm identifiers in this
+   registry are to be interpreted as whole string values and not as a
+   combination of parts.  That is to say, it is expected that
+   implementors understand "rsa-pss-sha512" as referring to one specific
+   algorithm with its hash, mask, and salt values set as defined here.
+   Implementors do not parse out the "rsa", "pss", and "sha512" portions
+   of the identifier to determine parameters of the signing algorithm
+   from the string.
+
 5.1.1.  Registration Template
 
    Algorithm Name:
