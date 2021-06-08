@@ -30,7 +30,7 @@ Editorial Note
    code and issues list for this draft can be found at
    https://github.com/httpwg/http-extensions/labels/safe-method-w-body.
 
-   The changes in this draft are summarized in Appendix A.1.
+   The changes in this draft are summarized in Appendix A.2.
 
 Status of This Memo
 
@@ -76,6 +76,7 @@ Table of Contents
    7.  Normative References
    Appendix A.  Change Log
      A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
+     A.2.  Since draft-ietf-httpbis-safe-method-w-body-01
    Authors' Addresses
 
 1.  Introduction
@@ -380,6 +381,10 @@ A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
 
    *  Relax restriction of generic XML media type in request body
       (https://github.com/httpwg/http-extensions/issues/1535)
+
+A.2.  Since draft-ietf-httpbis-safe-method-w-body-01
+
+   None yet.
 
 Authors' Addresses
 
