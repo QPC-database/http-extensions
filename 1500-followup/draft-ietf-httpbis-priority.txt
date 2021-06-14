@@ -5,8 +5,8 @@
 HTTP                                                              K. Oku
 Internet-Draft                                                    Fastly
 Intended status: Standards Track                               L. Pardue
-Expires: 13 December 2021                                     Cloudflare
-                                                            11 June 2021
+Expires: 16 December 2021                                     Cloudflare
+                                                            14 June 2021
 
 
                Extensible Prioritization Scheme for HTTP
@@ -55,7 +55,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 13 December 2021.
+   This Internet-Draft will expire on 16 December 2021.
 
 Copyright Notice
 
@@ -249,16 +249,16 @@ Table of Contents
    as a connection error of type PROTOCOL_ERROR.
 
    Until the client receives the SETTINGS frame from the server, the
-   client SHOULD send both the priority signal defined in the HTTP/2
-   priority scheme and also that of this prioritization scheme.  When
-   the client receives the first SETTINGS frame that contains the
-   SETTINGS_DEPRECATE_HTTP2_PRIORITIES parameter with value of 1, it
-   SHOULD stop sending the HTTP/2 priority signals.  If the value was 0
-   or if the settings parameter was absent, it SHOULD stop sending
-   PRIORITY_UPDATE frames (Section 6.1), but MAY continue sending the
-   Priority header field (Section 4), as it is an end-to-end signal that
-   might be useful to nodes behind the server that the client is
-   directly connected to.
+   client SHOULD send the signals of the HTTP/2 priority scheme (see
+   Section 2 ) and the signals of this prioritization scheme (see
+   Section 4 and Section 6.1).  When the client receives the first
+   SETTINGS frame that contains the SETTINGS_DEPRECATE_HTTP2_PRIORITIES
+   parameter with value of 1, it SHOULD stop sending the HTTP/2 priority
+   signals.  If the value was 0 or if the settings parameter was absent,
+   it SHOULD stop sending PRIORITY_UPDATE frames (Section 6.1), but MAY
+   continue sending the Priority header field (Section 4), as it is an
+   end-to-end signal that might be useful to nodes behind the server
+   that the client is directly connected to.
 
    The SETTINGS frame precedes any priority signal sent from a client in
    HTTP/2, so a server can determine if it should respect the HTTP/2
