@@ -5,8 +5,8 @@
 HTTP                                                              K. Oku
 Internet-Draft                                                    Fastly
 Intended status: Standards Track                               L. Pardue
-Expires: 16 December 2021                                     Cloudflare
-                                                            14 June 2021
+Expires: 17 December 2021                                     Cloudflare
+                                                            15 June 2021
 
 
                Extensible Prioritization Scheme for HTTP
@@ -55,7 +55,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 16 December 2021.
+   This Internet-Draft will expire on 17 December 2021.
 
 Copyright Notice
 
@@ -250,7 +250,7 @@ Table of Contents
 
    Until the client receives the SETTINGS frame from the server, the
    client SHOULD send the signals of the HTTP/2 priority scheme (see
-   Section 2 ) and the signals of this prioritization scheme (see
+   Section 2) and the signals of this prioritization scheme (see
    Section 4 and Section 6.1).  When the client receives the first
    SETTINGS frame that contains the SETTINGS_DEPRECATE_HTTP2_PRIORITIES
    parameter with value of 1, it SHOULD stop sending the HTTP/2 priority
