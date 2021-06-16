@@ -5,8 +5,8 @@
 HTTP                                                              K. Oku
 Internet-Draft                                                    Fastly
 Intended status: Standards Track                               L. Pardue
-Expires: 13 December 2021                                     Cloudflare
-                                                            11 June 2021
+Expires: 18 December 2021                                     Cloudflare
+                                                            16 June 2021
 
 
                Extensible Prioritization Scheme for HTTP
@@ -55,7 +55,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 13 December 2021.
+   This Internet-Draft will expire on 18 December 2021.
 
 Copyright Notice
 
@@ -90,16 +90,17 @@ Table of Contents
    7.  Merging Client- and Server-Driven Parameters
    8.  Client Scheduling
    9.  Server Scheduling
-   10. Fairness
-     10.1.  Coalescing Intermediaries
-     10.2.  HTTP/1.x Back Ends
-     10.3.  Intentional Introduction of Unfairness
-   11. Why use an End-to-End Header Field?
-   12. Security Considerations
-   13. IANA Considerations
-   14. References
-     14.1.  Normative References
-     14.2.  Informative References
+   10. Retransmission Scheduling
+   11. Fairness
+     11.1.  Coalescing Intermediaries
+     11.2.  HTTP/1.x Back Ends
+     11.3.  Intentional Introduction of Unfairness
+   12. Why use an End-to-End Header Field?
+   13. Security Considerations
+   14. IANA Considerations
+   15. References
+     15.1.  Normative References
+     15.2.  Informative References
    Appendix A.  Acknowledgements
    Appendix B.  Change Log
      B.1.  Since draft-ietf-httpbis-priority-01
@@ -725,7 +726,37 @@ Table of Contents
    the intended priority to the client by including the Priority field
    in a PUSH_PROMISE or HEADERS frame.
 
-10.  Fairness
+10.  Retransmission Scheduling
+
+   Transport protocols such as TCP and QUIC provide reliability by
+   detecting packet losses and retransmitting lost information.  While
+   this document specifies HTTP-layer prioritization, its effectiveness
+   can be further enhanced if the transport layer factors priority into
+   scheduling both new data and retransmission data.  The remainder of
+   this section discusses considerations when using QUIC.
+
+   [I-D.ietf-quic-transport], Section 13.3 states "Endpoints SHOULD
+   prioritize retransmission of data over sending new data, unless
+   priorities specified by the application indicate otherwise".  When an
+   HTTP/3 application uses the priority scheme defined in this document
+   and the QUIC transport implementation supports application indicated
+   stream priority, a transport that considers the relative priority of
+   streams when scheduling both new data and retransmission data might
+   better match the expectations of the application.  However, there are
+   no requirements on how a transport chooses to schedule based on this
+   information because the decision depends on several factors and
+   trade-offs.  It could prioritize new data for a higher urgency stream
+   over retransmission data for a lower priority stream, or it could
+   prioritize retransmission data over new data irrespective of
+   urgencies.
+
+   [I-D.ietf-quic-recovery], Section 6.2.4 also highlights consideration
+   of application priorities when sending probe packets after PTO timer
+   expiration.  An QUIC implementation supporting application-indicated
+   priorities might use the relative priority of streams when choosing
+   probe data.
+
+11.  Fairness
 
    As a general guideline, a server SHOULD NOT use priority information
    for making schedule decisions across multiple connections, unless it
@@ -737,7 +768,7 @@ Table of Contents
    problematic and presents possible mitigations, or where unfairness is
    desirable.
 
-10.1.  Coalescing Intermediaries
+11.1.  Coalescing Intermediaries
 
    When an intermediary coalesces HTTP requests coming from multiple
    clients into one HTTP/2 or HTTP/3 connection going to the backend
@@ -770,7 +801,7 @@ Table of Contents
 
    *  Via ([RFC7230], Section 5.7.1)
 
-10.2.  HTTP/1.x Back Ends
+11.2.  HTTP/1.x Back Ends
 
    It is common for CDN infrastructure to support different HTTP
    versions on the front end and back end.  For instance, the client-
@@ -785,7 +816,7 @@ Table of Contents
    can be scoped to individual end clients.  Authentication and other
    session information might provide this linkability.
 
-10.3.  Intentional Introduction of Unfairness
+11.3.  Intentional Introduction of Unfairness
 
    It is sometimes beneficial to deprioritize the transmission of one
    connection over others, knowing that doing so introduces a certain
@@ -797,7 +828,7 @@ Table of Contents
    software update images.  Doing so improves responsiveness of other
    connections at the cost of delaying the delivery of updates.
 
-11.  Why use an End-to-End Header Field?
+12.  Why use an End-to-End Header Field?
 
    Contrary to the prioritization scheme of HTTP/2 that uses a hop-by-
    hop frame, the Priority header field is defined as end-to-end.
@@ -822,7 +853,7 @@ Table of Contents
    textual value makes the prioritization scheme extensible; see the
    discussion below.
 
-12.  Security Considerations
+13.  Security Considerations
 
    [CVE-2019-9513] aka "Resource Loop", is a DoS attack based on
    manipulation of the HTTP/2 priority tree.  Extensible priorities does
@@ -859,7 +890,7 @@ Table of Contents
    depending on the information that is available to them from the QUIC
    transport layer.  TODO: so what can we suggest?
 
-13.  IANA Considerations
+14.  IANA Considerations
 
    This specification registers the following entry in the Permanent
    Message Header Field Names registry established by [RFC3864]:
@@ -911,9 +942,9 @@ Table of Contents
    types defined in Section 3; see Section 3.3.1 for its associated
    procedures.
 
-14.  References
+15.  References
 
-14.1.  Normative References
+15.1.  Normative References
 
    [I-D.ietf-quic-http]
               Bishop, M., "Hypertext Transfer Protocol Version 3
@@ -956,12 +987,19 @@ Table of Contents
               <https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-
               header-structure-19.txt>.
 
-14.2.  Informative References
+15.2.  Informative References
 
    [CVE-2019-9513]
               Common Vulnerabilities and Exposures, "CVE-2019-9513", 1
               March 2019, <https://cve.mitre.org/cgi-bin/
               cvename.cgi?name=CVE-2019-9513>.
+
+   [I-D.ietf-quic-recovery]
+              Iyengar, J. and I. Swett, "QUIC Loss Detection and
+              Congestion Control", Work in Progress, Internet-Draft,
+              draft-ietf-quic-recovery-34, 14 January 2021,
+              <https://datatracker.ietf.org/doc/html/draft-ietf-quic-
+              recovery-34.txt>.
 
    [I-D.lassey-priority-setting]
               Lassey, B. and L. Pardue, "Declaring Support for HTTP/2
