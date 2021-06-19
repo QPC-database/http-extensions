@@ -6,8 +6,8 @@ HTTP                                                          J. Reschke
 Internet-Draft                                                greenbytes
 Updates: 5323 (if approved)                                  A. Malhotra
 Intended status: Standards Track                                        
-Expires: 18 December 2021                                     J.M. Snell
-                                                            16 June 2021
+Expires: 21 December 2021                                     J.M. Snell
+                                                            19 June 2021
 
 
                            HTTP SEARCH Method
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 18 December 2021.
+   This Internet-Draft will expire on 21 December 2021.
 
 Copyright Notice
 
@@ -199,7 +199,7 @@ Table of Contents
    A successful response to a SEARCH request is expected to provide some
    indication as to the final disposition of the search operation.  For
    instance, a successful search that yields no results can be
-   represented by a 204 No Content response.  If the response includes a
+   represented by a 204 No Content response.  If the response includes
    content, it is expected to describe the results of the search
    operation.  In some cases, the server may choose to respond
    indirectly to the SEARCH request by returning a 3xx Redirection with
