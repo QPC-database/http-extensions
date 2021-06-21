@@ -276,7 +276,7 @@ Table of Contents
 
    The priority scheme defined by this document considers only the
    prioritization of HTTP response data.  Clients express priority
-   values to a server, which are input into server-side scheduling, see
+   values to a server, which are input into scheduling decisions, see
    Section 9 and Section 10.
 
    Where HTTP extensions change stream behavior or define new data
