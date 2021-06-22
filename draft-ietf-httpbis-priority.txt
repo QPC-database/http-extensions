@@ -5,8 +5,8 @@
 HTTP                                                              K. Oku
 Internet-Draft                                                    Fastly
 Intended status: Standards Track                               L. Pardue
-Expires: 23 December 2021                                     Cloudflare
-                                                            21 June 2021
+Expires: 24 December 2021                                     Cloudflare
+                                                            22 June 2021
 
 
                Extensible Prioritization Scheme for HTTP
@@ -55,7 +55,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 23 December 2021.
+   This Internet-Draft will expire on 24 December 2021.
 
 Copyright Notice
 
@@ -90,6 +90,7 @@ Table of Contents
    7.  Merging Client- and Server-Driven Parameters
    8.  Client Scheduling
    9.  Server Scheduling
+     9.1.  Intermediaries with Multiple Backend Connections
    10. Retransmission Scheduling
    11. Fairness
      11.1.  Coalescing Intermediaries
@@ -734,6 +735,23 @@ Table of Contents
    ever a server decides to schedule a pushed response, it can signal
    the intended priority to the client by including the Priority field
    in a PUSH_PROMISE or HEADERS frame.
+
+9.1.  Intermediaries with Multiple Backend Connections
+
+   An intermediary serving an HTTP connection might split requests over
+   multiple backend connections.  When it applies prioritization rules
+   strictly, low priority requests cannot make progress while requests
+   with higher priorities are inflight.  This blocking can propagate to
+   backend connections, which the peer might interpret as a connection
+   stall.  Endpoints often implement protections against stalls, such as
+   abruptly closing connections after a certain time period.  To reduce
+   the possibility of this occurring, intermediaries can avoid strictly
+   following prioritization and instead allocate small amounts of
+   bandwidth for all the requests that they are forwarding, so that
+   every request can make some progress over time.
+
+   Similarly, servers SHOULD allocate some amount of bandwidths to
+   streams acting as tunnels.
 
 10.  Retransmission Scheduling
 
