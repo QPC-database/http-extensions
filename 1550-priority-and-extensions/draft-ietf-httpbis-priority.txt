@@ -5,8 +5,8 @@
 HTTP                                                              K. Oku
 Internet-Draft                                                    Fastly
 Intended status: Standards Track                               L. Pardue
-Expires: 23 December 2021                                     Cloudflare
-                                                            21 June 2021
+Expires: 24 December 2021                                     Cloudflare
+                                                            22 June 2021
 
 
                Extensible Prioritization Scheme for HTTP
@@ -55,7 +55,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 23 December 2021.
+   This Internet-Draft will expire on 24 December 2021.
 
 Copyright Notice
 
@@ -275,9 +275,9 @@ Table of Contents
 3.  Applicability of the Extensible Priority Scheme
 
    The priority scheme defined by this document considers only the
-   prioritization of HTTP response data.  Clients express priority
-   values to a server, which are input into scheduling decisions, see
-   Section 9 and Section 10.
+   prioritization of HTTP messages and tunnels, see Section 9,
+   Section 10, and {TODO: xref to CONNECT, depends on
+   https://github.com/httpwg/http-extensions/pull/1544}
 
    Where HTTP extensions change stream behavior or define new data
    carriage mechanisms, they MAY also define how this priority scheme
