@@ -6,7 +6,7 @@ HTTP                                                            R. Polli
 Internet-Draft                         Team Digitale, Italian Government
 Obsoletes: 3230 (if approved)                                  L. Pardue
 Intended status: Standards Track                              Cloudflare
-Expires: 16 December 2021                                   14 June 2021
+Expires: 24 December 2021                                   22 June 2021
 
 
                              Digest Headers
@@ -49,7 +49,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 16 December 2021.
+   This Internet-Draft will expire on 24 December 2021.
 
 Copyright Notice
 
@@ -382,7 +382,7 @@ Table of Contents
 5.  The Content-Digest Field
 
    The "Content-Digest" field contains a comma-separated list of one or
-   more content digest values.  A content digest value is computed
+   more content digest values.  A content digest value is computed by
    applying a digest-algorithm to the actual message content (see
    Section 6.4 of [SEMANTICS]).  It can be used in both requests and
    responses.
