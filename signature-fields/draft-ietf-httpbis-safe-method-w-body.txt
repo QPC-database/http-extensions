@@ -6,8 +6,8 @@ HTTP                                                          J. Reschke
 Internet-Draft                                                greenbytes
 Updates: 5323 (if approved)                                  A. Malhotra
 Intended status: Standards Track                                        
-Expires: 28 November 2021                                     J.M. Snell
-                                                             27 May 2021
+Expires: 1 January 2022                                       J.M. Snell
+                                                            30 June 2021
 
 
                            HTTP SEARCH Method
@@ -20,17 +20,17 @@ Abstract
 
 Editorial Note
 
+   This note is to be removed before publishing as an RFC.
+
    Discussion of this draft takes place on the HTTP working group
    mailing list (ietf-http-wg@w3.org), which is archived at
    https://lists.w3.org/Archives/Public/ietf-http-wg/.
-
-   This note is to be removed before publishing as an RFC.
 
    Working Group information can be found at https://httpwg.org/; source
    code and issues list for this draft can be found at
    https://github.com/httpwg/http-extensions/labels/safe-method-w-body.
 
-   The changes in this draft are summarized in Appendix A.1.
+   The changes in this draft are summarized in Appendix A.2.
 
 Status of This Memo
 
@@ -47,7 +47,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 28 November 2021.
+   This Internet-Draft will expire on 1 January 2022.
 
 Copyright Notice
 
@@ -76,6 +76,7 @@ Table of Contents
    7.  Normative References
    Appendix A.  Change Log
      A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
+     A.2.  Since draft-ietf-httpbis-safe-method-w-body-01
    Authors' Addresses
 
 1.  Introduction
@@ -184,11 +185,9 @@ Table of Contents
    MAY use a request body of any content type with the SEARCH method;
    however, for backwards compatibility with existing WebDAV
    implementations, SEARCH requests that use the text/xml or
-   application/xml media types MUST be processed per the requirements
-   established by [RFC5323].
-   // This can be relaxed to XML with a document element in the "DAV:"
-   // namespace, or even to the two element names mentioned in
-   // Section 2.2.2 of [RFC5323].
+   application/xml media types with a root element (Section 2.1 of
+   [XML]) in the "DAV:" XML namespace ([XMLNS]) MUST be processed per
+   the requirements established by [RFC5323].
 
    SEARCH requests are both safe and idempotent with regards to the
    resource identified by the request URI.  That is, SEARCH requests do
@@ -200,7 +199,7 @@ Table of Contents
    A successful response to a SEARCH request is expected to provide some
    indication as to the final disposition of the search operation.  For
    instance, a successful search that yields no results can be
-   represented by a 204 No Content response.  If the response includes a
+   represented by a 204 No Content response.  If the response includes
    content, it is expected to describe the results of the search
    operation.  In some cases, the server may choose to respond
    indirectly to the SEARCH request by returning a 3xx Redirection with
@@ -254,7 +253,7 @@ Table of Contents
 
    SEARCH /contacts HTTP/1.1
    Host: example.org
-   Content-Type: text/query
+   Content-Type: example/query
    Accept: text/csv
 
    select surname, givenname, email limit 10
@@ -275,7 +274,7 @@ Table of Contents
 
    SEARCH /contacts HTTP/1.1
    Host: example.org
-   Content-Type: text/query
+   Content-Type: example/query
    Accept: text/csv
 
    select surname, givenname, email limit 10
@@ -341,14 +340,31 @@ Table of Contents
               <https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-
               semantics-16.txt>.
 
+   [XML]      Bray, T., Paoli, J., Sperberg-McQueen, M., Maler, E., and
+              F. Yergeau, "Extensible Markup Language (XML) 1.0 (Fifth
+              Edition)", W3C Recommendation REC-xml-20081126, 26
+              November 2008,
+              <https://www.w3.org/TR/2008/REC-xml-20081126/>.  Latest
+              version available at https://www.w3.org/TR/xml/.
+
+   [XMLNS]    Bray, T., Hollander, D., Layman, A., Tobin, R., and H.
+              Thompson, "Namespaces in XML 1.0 (Third Edition)", W3C
+              Recommendation REC-xml-names-20091208, 8 December 2009,
+              <https://www.w3.org/TR/2009/REC-xml-names-20091208/>.
+              Latest version available at https://www.w3.org/TR/xml-
+              names/.
+
 Appendix A.  Change Log
+
+   This section is to be removed before publishing as an RFC.
 
 
    // (see https://trac.tools.ietf.org/tools/xml2rfc/trac/ticket/622)
 
-   This section is to be removed before publishing as an RFC.
-
 A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
+
+   *  Use "example/query" media type instead of undefined "text/query"
+      (https://github.com/httpwg/http-extensions/issues/1450)
 
    *  In Section 3, adjust the grammar to just define the field value
       (https://github.com/httpwg/http-extensions/issues/1470)
@@ -362,6 +378,13 @@ A.1.  Since draft-ietf-httpbis-safe-method-w-body-00
 
    *  Update HTTP reference (https://github.com/httpwg/http-extensions/
       issues/1524)
+
+   *  Relax restriction of generic XML media type in request body
+      (https://github.com/httpwg/http-extensions/issues/1535)
+
+A.2.  Since draft-ietf-httpbis-safe-method-w-body-01
+
+   None yet.
 
 Authors' Addresses
 

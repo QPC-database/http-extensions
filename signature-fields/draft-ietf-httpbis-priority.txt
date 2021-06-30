@@ -5,8 +5,8 @@
 HTTP                                                              K. Oku
 Internet-Draft                                                    Fastly
 Intended status: Standards Track                               L. Pardue
-Expires: 28 November 2021                                     Cloudflare
-                                                             27 May 2021
+Expires: 1 January 2022                                       Cloudflare
+                                                            30 June 2021
 
 
                Extensible Prioritization Scheme for HTTP
@@ -55,7 +55,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 28 November 2021.
+   This Internet-Draft will expire on 1 January 2022.
 
 Copyright Notice
 
@@ -90,16 +90,18 @@ Table of Contents
    7.  Merging Client- and Server-Driven Parameters
    8.  Client Scheduling
    9.  Server Scheduling
-   10. Fairness
-     10.1.  Coalescing Intermediaries
-     10.2.  HTTP/1.x Back Ends
-     10.3.  Intentional Introduction of Unfairness
-   11. Why use an End-to-End Header Field?
-   12. Security Considerations
-   13. IANA Considerations
-   14. References
-     14.1.  Normative References
-     14.2.  Informative References
+     9.1.  Intermediaries with Multiple Backend Connections
+   10. Retransmission Scheduling
+   11. Fairness
+     11.1.  Coalescing Intermediaries
+     11.2.  HTTP/1.x Back Ends
+     11.3.  Intentional Introduction of Unfairness
+   12. Why use an End-to-End Header Field?
+   13. Security Considerations
+   14. IANA Considerations
+   15. References
+     15.1.  Normative References
+     15.2.  Informative References
    Appendix A.  Acknowledgements
    Appendix B.  Change Log
      B.1.  Since draft-ietf-httpbis-priority-01
@@ -129,7 +131,7 @@ Table of Contents
    moment, it is important for an HTTP server to prioritize the HTTP
    responses, or the chunks of those HTTP responses, that it sends.
 
-   HTTP/2 ([RFC7540]) provides such a prioritization scheme.  A client
+   HTTP/2 ([HTTP2]) provides such a prioritization scheme.  A client
    sends a series of PRIORITY frames to communicate to the server a
    "priority tree"; this represents the client's preferred ordering and
    weighted distribution of the bandwidth among the HTTP responses.
@@ -153,13 +155,12 @@ Table of Contents
    [STRUCTURED-FIELDS].
 
    Example HTTP requests and responses use the HTTP/2-style formatting
-   from [RFC7540].
+   from [HTTP2].
 
-   This document uses the variable-length integer encoding from
-   [I-D.ietf-quic-transport].
+   This document uses the variable-length integer encoding from [QUIC].
 
    The term control stream is used to describe the HTTP/2 stream with
-   identifier 0x0, and HTTP/3 control stream; see [I-D.ietf-quic-http],
+   identifier 0x0, and HTTP/3 control stream; see [HTTP3],
    Section 6.2.1.
 
 2.  Motivation for Replacing HTTP/2 Priorities
@@ -171,18 +172,28 @@ Table of Contents
    suboptimal, particularly if one endpoint operates in ignorance of the
    needs of its peer.
 
-   HTTP/2 introduced a complex prioritization signaling scheme that used
-   a combination of dependencies and weights, formed into an unbalanced
-   tree.  This scheme has suffered from poor deployment and
+   HTTP/2 introduced a complex prioritization scheme that uses a
+   combination of stream dependencies and weights to describe an
+   unbalanced tree.  This scheme has suffered from poor deployment and
    interoperability.
 
-   The rich flexibility of client-driven HTTP/2 prioritization tree
-   building is rarely exercised.  Experience has shown that clients tend
-   to choose a single model optimized for a web use case and experiment
-   within the model constraints, or do nothing at all.  Furthermore,
-   many clients build their prioritization tree in a unique way, which
-   makes it difficult for servers to understand their intent and act or
-   intervene accordingly.
+   Clients build an HTTP/2 prioritization tree through a series of
+   individual stream relationships, which are transferred to the server
+   using HTTP/2 priority signals in either of three forms.  First, a
+   HEADERS frame with the PRIORITY flag set is an explicit signal that
+   includes an Exclusive flag, Stream Dependency field, and Weight
+   field.  Second, a HEADERS frame with no PRIORITY flag is an implicit
+   signal to use the default priority.  Third, the PRIORITY frame, which
+   is always explicit since it always contains an Exclusive flag, Stream
+   Dependency field, and Weight field.
+
+   The rich flexibility of tree building is rarely exercised.
+   Experience has shown that clients tend to choose a single model
+   optimized for a web use case and experiment within the model
+   constraints, or do nothing at all.  Furthermore, many clients build
+   their prioritization tree in a unique way, which makes it difficult
+   for servers to understand their intent and act or intervene
+   accordingly.
 
    Many HTTP/2 server implementations do not include support for the
    priority scheme.  Some instead favor custom server-driven schemes
@@ -211,7 +222,7 @@ Table of Contents
    The HTTP/2 scheme depends on in-order delivery of signals, leading to
    challenges in porting the scheme to protocols that do not provide
    global ordering.  For example, the scheme cannot be used in HTTP/3
-   [I-D.ietf-quic-http] without changing the signal and its processing.
+   [HTTP3] without changing the signal and its processing.
 
    Considering the problems with deployment and adaptability to HTTP/3,
    retaining the HTTP/2 priority scheme increases the complexity of the
@@ -229,36 +240,32 @@ Table of Contents
    specification.  The SETTINGS_DEPRECATE_HTTP2_PRIORITIES setting
    described below enables endpoints to understand their peer's
    intention.  The value of the parameter MUST be 0 or 1.  Any value
-   other than 0 or 1 MUST be treated as a connection error (see
-   [RFC7540], Section 5.4.1) of type PROTOCOL_ERROR.
+   other than 0 or 1 MUST be treated as a connection error (see [HTTP2],
+   Section 5.4.1) of type PROTOCOL_ERROR.
 
    Endpoints MUST send this SETTINGS parameter as part of the first
-   SETTINGS frame.  When the peer receives the first SETTINGS frame, it
-   learns the sender has deprecated the HTTP/2 priority scheme if it
-   receives the SETTINGS_DEPRECATE_HTTP2_PRIORITIES parameter with the
-   value of 1.
-
-   A sender MUST NOT change the SETTINGS_DEPRECATE_HTTP2_PRIORITIES
-   parameter value after the first SETTINGS frame.  Detection of a
-   change by a receiver MUST be treated as a connection error of type
-   PROTOCOL_ERROR.
+   SETTINGS frame.  A sender MUST NOT change the
+   SETTINGS_DEPRECATE_HTTP2_PRIORITIES parameter value after the first
+   SETTINGS frame.  Detection of a change by a receiver MUST be treated
+   as a connection error of type PROTOCOL_ERROR.
 
    Until the client receives the SETTINGS frame from the server, the
-   client SHOULD send both the priority signal defined in the HTTP/2
-   priority scheme and also that of this prioritization scheme.  Once
-   the client learns that the HTTP/2 priority scheme is deprecated, it
-   SHOULD stop sending the HTTP/2 priority signals.  If the client
-   learns that the HTTP/2 priority scheme is not deprecated, it SHOULD
-   stop sending PRIORITY_UPDATE frames (Section 6.1), but MAY continue
-   sending the Priority header field (Section 4), as it is an end-to-end
-   signal that might be useful to nodes behind the server that the
-   client is directly connected to.
+   client SHOULD send the signals of the HTTP/2 priority scheme (see
+   Section 2) and the signals of this prioritization scheme (see
+   Section 4 and Section 6.1).  When the client receives the first
+   SETTINGS frame that contains the SETTINGS_DEPRECATE_HTTP2_PRIORITIES
+   parameter with value of 1, it SHOULD stop sending the HTTP/2 priority
+   signals.  If the value was 0 or if the settings parameter was absent,
+   it SHOULD stop sending PRIORITY_UPDATE frames (Section 6.1), but MAY
+   continue sending the Priority header field (Section 4), as it is an
+   end-to-end signal that might be useful to nodes behind the server
+   that the client is directly connected to.
 
    The SETTINGS frame precedes any priority signal sent from a client in
    HTTP/2, so a server can determine if it should respect the HTTP/2
    scheme before building state.  A server that receives
-   SETTINGS_DEPRECATE_HTTP2_PRIORITIES MUST ignore HTTP/2 priority
-   signals.
+   SETTINGS_DEPRECATE_HTTP2_PRIORITIES with value of 1 MUST ignore
+   HTTP/2 priority signals.
 
    Where both endpoints disable HTTP/2 priorities, the client is
    expected to send this scheme's priority signal.  Handling of omitted
@@ -446,12 +453,12 @@ Table of Contents
 6.  The PRIORITY_UPDATE Frame
 
    This document specifies a new PRIORITY_UPDATE frame for HTTP/2
-   ([RFC7540]) and HTTP/3 ([I-D.ietf-quic-http]).  It carries priority
-   parameters and references the target of the prioritization based on a
-   version-specific identifier.  In HTTP/2, this identifier is the
-   Stream ID; in HTTP/3, the identifier is either the Stream ID or Push
-   ID.  Unlike the Priority header field, the PRIORITY_UPDATE frame is a
-   hop-by-hop signal.
+   ([HTTP2]) and HTTP/3 ([HTTP3]).  It carries priority parameters and
+   references the target of the prioritization based on a version-
+   specific identifier.  In HTTP/2, this identifier is the Stream ID; in
+   HTTP/3, the identifier is either the Stream ID or Push ID.  Unlike
+   the Priority header field, the PRIORITY_UPDATE frame is a hop-by-hop
+   signal.
 
    PRIORITY_UPDATE frames are sent by clients on the control stream,
    allowing them to be sent independent from the stream that carries the
@@ -491,7 +498,7 @@ Table of Contents
    and the priority in ASCII text, using the same representation as the
    Priority header field value.
 
-   The Stream Identifier field ([RFC7540], Section 4.1) in the
+   The Stream Identifier field ([HTTP2], Section 4.1) in the
    PRIORITY_UPDATE frame header MUST be zero (0x0).  Receiving a
    PRIORITY_UPDATE frame with a field of any other value MUST be treated
    as a connection error of type PROTOCOL_ERROR.
@@ -525,7 +532,7 @@ Table of Contents
    "half-closed (local)" or "closed" state.  The number of streams which
    have been prioritized but remain in the "idle" state plus the number
    of active streams (those in the "open" or either "half-closed" state;
-   see section 5.1.2 of [RFC7540]) MUST NOT exceed the value of the
+   see section 5.1.2 of [HTTP2]) MUST NOT exceed the value of the
    SETTINGS_MAX_CONCURRENT_STREAMS parameter.  Servers that receive such
    a PRIORITY_UPDATE MUST respond with a connection error of type
    PROTOCOL_ERROR.
@@ -558,9 +565,9 @@ Table of Contents
    0xF0701 is used for push streams.
 
    The PRIORITY_UPDATE frame MUST be sent on the client control stream
-   ([I-D.ietf-quic-http], Section 6.2.1).  Receiving a PRIORITY_UPDATE
-   frame on a stream other than the client control stream MUST be
-   treated as a connection error of type H3_FRAME_UNEXPECTED.
+   ([HTTP3], Section 6.2.1).  Receiving a PRIORITY_UPDATE frame on a
+   stream other than the client control stream MUST be treated as a
+   connection error of type H3_FRAME_UNEXPECTED.
 
    HTTP/3 PRIORITY_UPDATE Frame {
      Type (i) = 0xF0700..0xF0701,
@@ -729,7 +736,54 @@ Table of Contents
    the intended priority to the client by including the Priority field
    in a PUSH_PROMISE or HEADERS frame.
 
-10.  Fairness
+9.1.  Intermediaries with Multiple Backend Connections
+
+   An intermediary serving an HTTP connection might split requests over
+   multiple backend connections.  When it applies prioritization rules
+   strictly, low priority requests cannot make progress while requests
+   with higher priorities are inflight.  This blocking can propagate to
+   backend connections, which the peer might interpret as a connection
+   stall.  Endpoints often implement protections against stalls, such as
+   abruptly closing connections after a certain time period.  To reduce
+   the possibility of this occurring, intermediaries can avoid strictly
+   following prioritization and instead allocate small amounts of
+   bandwidth for all the requests that they are forwarding, so that
+   every request can make some progress over time.
+
+   Similarly, servers SHOULD allocate some amount of bandwidths to
+   streams acting as tunnels.
+
+10.  Retransmission Scheduling
+
+   Transport protocols such as TCP and QUIC provide reliability by
+   detecting packet losses and retransmitting lost information.  While
+   this document specifies HTTP-layer prioritization, its effectiveness
+   can be further enhanced if the transport layer factors priority into
+   scheduling both new data and retransmission data.  The remainder of
+   this section discusses considerations when using QUIC.
+
+   [QUIC], Section 13.3 states "Endpoints SHOULD prioritize
+   retransmission of data over sending new data, unless priorities
+   specified by the application indicate otherwise".  When an HTTP/3
+   application uses the priority scheme defined in this document and the
+   QUIC transport implementation supports application indicated stream
+   priority, a transport that considers the relative priority of streams
+   when scheduling both new data and retransmission data might better
+   match the expectations of the application.  However, there are no
+   requirements on how a transport chooses to schedule based on this
+   information because the decision depends on several factors and
+   trade-offs.  It could prioritize new data for a higher urgency stream
+   over retransmission data for a lower priority stream, or it could
+   prioritize retransmission data over new data irrespective of
+   urgencies.
+
+   [QUIC-RECOVERY], Section 6.2.4 also highlights consideration of
+   application priorities when sending probe packets after PTO timer
+   expiration.  An QUIC implementation supporting application-indicated
+   priorities might use the relative priority of streams when choosing
+   probe data.
+
+11.  Fairness
 
    As a general guideline, a server SHOULD NOT use priority information
    for making schedule decisions across multiple connections, unless it
@@ -741,7 +795,7 @@ Table of Contents
    problematic and presents possible mitigations, or where unfairness is
    desirable.
 
-10.1.  Coalescing Intermediaries
+11.1.  Coalescing Intermediaries
 
    When an intermediary coalesces HTTP requests coming from multiple
    clients into one HTTP/2 or HTTP/3 connection going to the backend
@@ -774,7 +828,7 @@ Table of Contents
 
    *  Via ([RFC7230], Section 5.7.1)
 
-10.2.  HTTP/1.x Back Ends
+11.2.  HTTP/1.x Back Ends
 
    It is common for CDN infrastructure to support different HTTP
    versions on the front end and back end.  For instance, the client-
@@ -789,7 +843,7 @@ Table of Contents
    can be scoped to individual end clients.  Authentication and other
    session information might provide this linkability.
 
-10.3.  Intentional Introduction of Unfairness
+11.3.  Intentional Introduction of Unfairness
 
    It is sometimes beneficial to deprioritize the transmission of one
    connection over others, knowing that doing so introduces a certain
@@ -801,7 +855,7 @@ Table of Contents
    software update images.  Doing so improves responsiveness of other
    connections at the cost of delaying the delivery of updates.
 
-11.  Why use an End-to-End Header Field?
+12.  Why use an End-to-End Header Field?
 
    Contrary to the prioritization scheme of HTTP/2 that uses a hop-by-
    hop frame, the Priority header field is defined as end-to-end.
@@ -826,7 +880,7 @@ Table of Contents
    textual value makes the prioritization scheme extensible; see the
    discussion below.
 
-12.  Security Considerations
+13.  Security Considerations
 
    [CVE-2019-9513] aka "Resource Loop", is a DoS attack based on
    manipulation of the HTTP/2 priority tree.  Extensible priorities does
@@ -835,12 +889,12 @@ Table of Contents
    TBD: depending on the outcome of reprioritization discussions,
    following paragraphs may change or be removed.
 
-   [RFC7540], Section 5.3.4 describes a scenario where closure of
-   streams in the priority tree could cause suboptimal prioritization.
-   To avoid this, [RFC7540] states that "an endpoint SHOULD retain
-   stream prioritization state for a period after streams become
-   closed".  Retaining state for streams no longer counted towards
-   stream concurrency consumes server resources.  Furthermore, [RFC7540]
+   [HTTP2], Section 5.3.4 describes a scenario where closure of streams
+   in the priority tree could cause suboptimal prioritization.  To avoid
+   this, [HTTP2] states that "an endpoint SHOULD retain stream
+   prioritization state for a period after streams become closed".
+   Retaining state for streams no longer counted towards stream
+   concurrency consumes server resources.  Furthermore, [HTTP2]
    identifies that reprioritization of a closed stream could affect
    dependents; it recommends updating the priority tree if sufficient
    state is stored, which will also consume server resources.  To limit
@@ -851,7 +905,7 @@ Table of Contents
    Extensible priorities does not use stream dependencies, which
    minimizes most of the resource concerns related to this scenario.
 
-   [RFC7540], Section 5.3.4 also presents considerations about the state
+   [HTTP2], Section 5.3.4 also presents considerations about the state
    required to store priority information about streams in an "idle"
    state.  This state can be limited by adopting the guidance about
    concurrency limits described above.  Extensible priorities is subject
@@ -863,7 +917,7 @@ Table of Contents
    depending on the information that is available to them from the QUIC
    transport layer.  TODO: so what can we suggest?
 
-13.  IANA Considerations
+14.  IANA Considerations
 
    This specification registers the following entry in the Permanent
    Message Header Field Names registry established by [RFC3864]:
@@ -881,7 +935,7 @@ Table of Contents
    Related information:  n/a
 
    This specification registers the following entry in the HTTP/2
-   Settings registry established by [RFC7540]:
+   Settings registry established by [HTTP2]:
 
    Name:  SETTINGS_DEPRECATE_HTTP2_PRIORITIES
 
@@ -892,7 +946,7 @@ Table of Contents
    Specification:  This document
 
    This specification registers the following entry in the HTTP/2 Frame
-   Type registry established by [RFC7540]:
+   Type registry established by [HTTP2]:
 
    Frame Type:  PRIORITY_UPDATE
 
@@ -901,7 +955,7 @@ Table of Contents
    Specification:  This document
 
    This specification registers the following entries in the HTTP/3
-   Frame Type registry established by [I-D.ietf-quic-http]:
+   Frame Type registry established by [HTTP3]:
 
    Frame Type:  PRIORITY_UPDATE
 
@@ -915,23 +969,25 @@ Table of Contents
    types defined in Section 3; see Section 3.3.1 for its associated
    procedures.
 
-14.  References
+15.  References
 
-14.1.  Normative References
+15.1.  Normative References
 
-   [I-D.ietf-quic-http]
-              Bishop, M., "Hypertext Transfer Protocol Version 3
+   [HTTP2]    Belshe, M., Peon, R., and M. Thomson, Ed., "Hypertext
+              Transfer Protocol Version 2 (HTTP/2)", RFC 7540,
+              DOI 10.17487/RFC7540, May 2015,
+              <https://datatracker.ietf.org/doc/html/rfc7540>.
+
+   [HTTP3]    Bishop, M., "Hypertext Transfer Protocol Version 3
               (HTTP/3)", Work in Progress, Internet-Draft, draft-ietf-
               quic-http-34, 2 February 2021,
               <https://datatracker.ietf.org/doc/html/draft-ietf-quic-
               http-34.txt>.
 
-   [I-D.ietf-quic-transport]
-              Iyengar, J. and M. Thomson, "QUIC: A UDP-Based Multiplexed
-              and Secure Transport", Work in Progress, Internet-Draft,
-              draft-ietf-quic-transport-34, 14 January 2021,
-              <https://datatracker.ietf.org/doc/html/draft-ietf-quic-
-              transport-34.txt>.
+   [QUIC]     Iyengar, J., Ed. and M. Thomson, Ed., "QUIC: A UDP-Based
+              Multiplexed and Secure Transport", RFC 9000,
+              DOI 10.17487/RFC9000, May 2021,
+              <https://datatracker.ietf.org/doc/html/rfc9000>.
 
    [RFC2119]  Bradner, S., "Key words for use in RFCs to Indicate
               Requirement Levels", BCP 14, RFC 2119,
@@ -943,24 +999,17 @@ Table of Contents
               RFC 7230, DOI 10.17487/RFC7230, June 2014,
               <https://datatracker.ietf.org/doc/html/rfc7230>.
 
-   [RFC7540]  Belshe, M., Peon, R., and M. Thomson, Ed., "Hypertext
-              Transfer Protocol Version 2 (HTTP/2)", RFC 7540,
-              DOI 10.17487/RFC7540, May 2015,
-              <https://datatracker.ietf.org/doc/html/rfc7540>.
-
    [RFC8126]  Cotton, M., Leiba, B., and T. Narten, "Guidelines for
               Writing an IANA Considerations Section in RFCs", BCP 26,
               RFC 8126, DOI 10.17487/RFC8126, June 2017,
               <https://datatracker.ietf.org/doc/html/rfc8126>.
 
    [STRUCTURED-FIELDS]
-              Nottingham, M. and P. Kamp, "Structured Field Values for
-              HTTP", Work in Progress, Internet-Draft, draft-ietf-
-              httpbis-header-structure-19, 3 June 2020,
-              <https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-
-              header-structure-19.txt>.
+              Nottingham, M. and P-H. Kamp, "Structured Field Values for
+              HTTP", RFC 8941, DOI 10.17487/RFC8941, February 2021,
+              <https://datatracker.ietf.org/doc/html/rfc8941>.
 
-14.2.  Informative References
+15.2.  Informative References
 
    [CVE-2019-9513]
               Common Vulnerabilities and Exposures, "CVE-2019-9513", 1
@@ -973,6 +1022,11 @@ Table of Contents
               lassey-priority-setting-00, 25 July 2019,
               <https://datatracker.ietf.org/doc/html/draft-lassey-
               priority-setting-00.txt>.
+
+   [QUIC-RECOVERY]
+              Iyengar, J., Ed. and I. Swett, Ed., "QUIC Loss Detection
+              and Congestion Control", RFC 9002, DOI 10.17487/RFC9002,
+              May 2021, <https://datatracker.ietf.org/doc/html/rfc9002>.
 
    [RFC3864]  Klyne, G., Nottingham, M., and J. Mogul, "Registration
               Procedures for Message Header Fields", BCP 90, RFC 3864,

@@ -5,10 +5,10 @@
 HTTP                                                     A. Backman, Ed.
 Internet-Draft                                                    Amazon
 Intended status: Standards Track                               J. Richer
-Expires: 28 November 2021                            Bespoke Engineering
+Expires: 1 January 2022                              Bespoke Engineering
                                                                M. Sporny
                                                           Digital Bazaar
-                                                             27 May 2021
+                                                            30 June 2021
 
 
                          Signing HTTP Messages
@@ -53,7 +53,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 28 November 2021.
+   This Internet-Draft will expire on 1 January 2022.
 
 Copyright Notice
 
@@ -83,12 +83,16 @@ Table of Contents
        2.1.2.  Canonicalization Examples
      2.2.  Dictionary Structured Field Members
        2.2.1.  Canonicalization Examples
-     2.3.  List Prefixes
-       2.3.1.  Canonicalization Examples
-     2.4.  Specialty Content Fields
-       2.4.1.  Request Target
-       2.4.2.  Signature Parameters
-     2.5.  Creating the Signature Input String
+     2.3.  Specialty Content Fields
+       2.3.1.  Signature Parameters
+       2.3.2.  Method
+       2.3.3.  Authority
+       2.3.4.  Scheme
+       2.3.5.  Request Origin
+       2.3.6.  Path
+       2.3.7.  Query Components
+       2.3.8.  Status Code
+     2.4.  Creating the Signature Input String
    3.  HTTP Message Signatures
      3.1.  Creating a Signature
      3.2.  Verifying a Signature
@@ -121,11 +125,15 @@ Table of Contents
    Appendix B.  Examples
      B.1.  Example Keys
        B.1.1.  Example Key RSA test
-       B.1.2.  Example Key RSA PSS test
+       B.1.2.  Example RSA PSS Key
+       B.1.3.  Example ECC P-256 Test Key
+       B.1.4.  Example Shared Secret
      B.2.  Test Cases
        B.2.1.  Minimal Signature Header using rsa-pss-sha512
-       B.2.2.  Header Coverage
-       B.2.3.  Full Coverage
+       B.2.2.  Header Coverage using rsa-pss-sha512
+       B.2.3.  Full Coverage using rsa-pss-sha512
+       B.2.4.  Signing a Response using ecdsa-p256-sha256
+       B.2.5.  Signing a Request using hmac-sha256
    Acknowledgements
    Document History
    Authors' Addresses
@@ -298,7 +306,7 @@ Table of Contents
 
    Covered Content:
       An ordered list of content identifiers for headers (Section 2.1)
-      and specialty content (Section 2.4) that indicates the metadata
+      and specialty content (Section 2.3) that indicates the metadata
       and message content that is covered by the signature, not
       including the "@signature-params" specialty field itself.
 
@@ -352,14 +360,14 @@ Table of Contents
 
    *  A means of retrieving the key material used to verify the
       signature.  An application will usually use the "keyid" parameter
-      of the signature parameters (Section 2.4.2) and define rules for
+      of the signature parameters (Section 2.3.1) and define rules for
       resolving a key from there, though the appropriate key could be
       known from other means.
 
    *  A means of determining the signature algorithm used to verify the
       signature content is appropriate for the key material.  For
       example, the process could use the "alg" parameter of the
-      signature parameters (Section 2.4.2) to state the algorithm
+      signature parameters (Section 2.3.1) to state the algorithm
       explicitly, derive the algorithm from the key material, or use
       some pre-configured algorithm agreed upon by the signer and
       verifier.
@@ -379,7 +387,9 @@ Table of Contents
    covered by a signature, this document defines content identifiers for
    data items covered by an HTTP Message Signature as well as the means
    for combining these canonicalized values into a signature input
-   string.
+   string.  The values for these items MUST be accessible to both the
+   sender and the receiver of the message, which means these are usually
+   are derived from aspects of the HTTP message or signature itself.
 
    Some content within HTTP messages can undergo transformations that
    change the bitwise value without altering meaning of the content (for
@@ -404,7 +414,7 @@ Table of Contents
    The following sections define content identifier types, their
    parameters, their associated content, and their canonicalization
    rules.  The method for combining content identifiers into the
-   signature input string is defined in Section 2.5.
+   signature input string is defined in Section 2.4.
 
 2.1.  HTTP Headers
 
@@ -512,48 +522,7 @@ Table of Contents
                     Table 2: Non-normative examples of
                    Dictionary member canonicalization.
 
-2.3.  List Prefixes
-
-   A prefix of a List Structured Field consisting of the first N members
-   in the field's value (where N is an integer greater than 0 and less
-   than or equal to the number of members in the List) is identified by
-   the parameter "prefix" with the value of N as an integer.
-
-   A list prefix value is canonicalized by applying the serialization
-   algorithm described in Section 4.1.1 of RFC8941 [RFC8941] on a List
-   containing only the first N members as specified in the list prefix,
-   in the order they appear in the original List.
-
-2.3.1.  Canonicalization Examples
-
-   This section contains non-normative examples of canonicalized values
-   for list prefixes given the following example header fields, whose
-   values are assumed to be Dictionaries:
-
-   X-List-A: (a b c d e f)
-   X-List-B: ()
-
-   The following table shows example canonicalized values for different
-   content identifiers, given those fields:
-
-               +=====================+=====================+
-               | Content Identifier  | Canonicalized Value |
-               +=====================+=====================+
-               | "x-list-a";prefix=0 | ()                  |
-               +---------------------+---------------------+
-               | "x-list-a";prefix=1 | (a)                 |
-               +---------------------+---------------------+
-               | "x-list-a";prefix=3 | (a, b, c)           |
-               +---------------------+---------------------+
-               | "x-list-a";prefix=6 | (a, b, c, d, e, f)  |
-               +---------------------+---------------------+
-               | "x-list-b";prefix=0 | ()                  |
-               +---------------------+---------------------+
-
-                  Table 3: Non-normative examples of list
-                          prefix canonicalization.
-
-2.4.  Specialty Content Fields
+2.3.  Specialty Content Fields
 
    Content not found in an HTTP header can be included in the signature
    base string by defining a content identifier and the canonicalization
@@ -564,72 +533,58 @@ Table of Contents
    This specification defines the following specialty content
    identifiers:
 
-   @request-target  The target request endpoint.  (Section 2.4.1)
-
    @signature-params  The signature metadata parameters for this
-      signature.  (Section 2.4.2)
+      signature.  (Section 2.3.1)
+
+   @method  The method used for a request.  (Section 2.3.2)
+
+   @authority  The authority for a request.  (Section 2.3.3)
+
+   @scheme  The scheme of the requested URI.  (Section 2.3.4)
+
+   @request-origin  The origin-form of the request target.
+      (Section 2.3.5)
+
+   @path  The absolute path portion of the request target.
+      (Section 2.3.6)
+
+   @query-param  The parsed query parameters of the request target.
+      (Section 2.3.7)
+
+   @status-code  The status code for a response.  (Section 2.3.8).
 
    Additional specialty content identifiers MAY be defined and
    registered in the HTTP Signatures Specialty Content Identifier
    Registry.  (Section 5.3)
 
-2.4.1.  Request Target
-
-   The request target endpoint, consisting of the request method and the
-   path and query of the effective request URI, is identified by the
-   "@request-target" identifier.
-
-   Its value is canonicalized as follows:
-
-   1.  Take the lowercased HTTP method of the message.
-
-   2.  Append a space " ".
-
-   3.  Append the path and query of the request target of the message,
-       formatted according to the rules defined for the :path pseudo-
-       header in [HTTP2], Section 8.1.2.3.  The resulting string is the
-       canonicalized value.
-
-2.4.1.1.  Canonicalization Examples
-
-   The following table contains non-normative example HTTP messages and
-   their canonicalized "@request-target" values.
-
-       +=========================+=================+
-       |HTTP Message             | @request-target |
-       +=========================+=================+
-       |   POST /?param=value HTTP/1.1| post            |
-       |   Host: www.example.com | /?param=value   |
-       +-------------------------+-----------------+
-       |   POST /a/b HTTP/1.1    | post /a/b       |
-       |   Host: www.example.com |                 |
-       +-------------------------+-----------------+
-       |   GET http://www.example.com/a/ HTTP/1.1| get /a/         |
-       +-------------------------+-----------------+
-       |   GET http://www.example.com HTTP/1.1| get /           |
-       +-------------------------+-----------------+
-       |   CONNECT server.example.com:80 HTTP/1.1| connect /       |
-       |   Host: server.example.com|                 |
-       +-------------------------+-----------------+
-       |   OPTIONS * HTTP/1.1    | options *       |
-       |   Host: server.example.com|                 |
-       +-------------------------+-----------------+
-
-            Table 4: Non-normative examples of "@request-target"
-                             canonicalization.
-
-2.4.2.  Signature Parameters
+2.3.1.  Signature Parameters
 
    HTTP Message Signatures have metadata properties that provide
    information regarding the signature's generation and/or verification.
 
-   The signature parameters special content is identified by the
+   The signature parameters specialty content is identified by the
    "@signature-params" identifier.
 
    Its canonicalized value is the serialization of the signature
    parameters for this signature, including the covered content list
-   with all associated parameters.  The following metadata properties
-   are defined:
+   with all associated parameters.
+
+   *  "alg": The HTTP message signature algorithm from the HTTP Message
+      Signature Algorithm Registry, as an "sf-string" value.
+
+   *  "keyid": The identifier for the key material as an "sf-string"
+      value.
+
+   *  "created": Creation time as an "sf-integer" UNIX timestamp value.
+      Sub-second precision is not supported.
+
+   *  "expires": Expiration time as an "sf-integer" UNIX timestamp
+      value.  Sub-second precision is not supported.
+
+   *  "nonce": A random unique value generated for this signature.
+
+   Additional parameters can be defined in the HTTP Signature Parameters
+   Registry (Section 5.2.2).
 
    The signature parameters are serialized using the rules in Section 4
    of RFC8941 [RFC8941] as follows:
@@ -639,31 +594,17 @@ Table of Contents
    2.  Determine an order for the content identifiers of the covered
        content.  Once this order is chosen, it cannot be changed.
 
-   3.  Serialize the content identifiers of the covered content as an
-       ordered "inner-list" according to Section 4.1.1.1 of RFC8941
-       [RFC8941] and append this to the output.
+   3.  Serialize the content identifiers of the covered content,
+       including all parameters, as an ordered "inner-list" according to
+       Section 4.1.1.1 of RFC8941 [RFC8941] and append this to the
+       output.
 
-   4.  Determine an order for signature metadata parameters.  Once this
-       order is chosen, it cannot be changed.
+   4.  Determine an order for any signature parameters.  Once this order
+       is chosen, it cannot be changed.
 
-   5.  Append the signature metadata as parameters according to
-       Section 4.1.1.2 of RFC8941 [RFC8941] in the chosen order,
-       skipping fields that are not available or not used for this
-       signature:
-
-       *  "alg": The HTTP message signature algorithm from the HTTP
-          Message Signature Algorithm Registry, as an "sf-string" value.
-
-       *  "keyid": The identifier for the key material as an "sf-string"
-          value.
-
-       *  "created": Creation time as an "sf-integer" UNIX timestamp
-          value.  Sub-second precision is not supported.
-
-       *  "expires": Expiration time as an "sf-integer" UNIX timestamp
-          value.  Sub-second precision is not supported.
-
-       *  "nonce": A random unique value generated for this signature.
+   5.  Append the parameters to the "inner-list" in the chosen order
+       according to Section 4.1.1.2 of RFC8941 [RFC8941], skipping
+       parameters that are not available or not used for this signature.
 
    6.  The output contains the signature parameters value.
 
@@ -681,9 +622,142 @@ Table of Contents
 
    Note that an HTTP message could contain multiple signatures, but only
    the signature parameters used for the current signature are included
-   in this field.
+   in this entry.
 
-2.5.  Creating the Signature Input String
+2.3.2.  Method
+
+   The "@method" identifier refers to the HTTP method of a request
+   message.  The value of is canonicalized by taking the value of the
+   method as a string.  Note that the method name is case-sensitive as
+   per [SEMANTICS], and conventionally standardized method names are
+   uppercase US-ASCII.
+
+   For example, the following request message:
+
+   POST /path?param=value HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@method" value:
+
+   "@method": POST
+
+2.3.3.  Authority
+
+   The "@authority" identifier refers to the authority component of the
+   target of the HTTP request message.  In HTTP 1.1, this is usually
+   conveyed using the "Host" header, while in HTTP 2 and HTTP 3 it is
+   conveyed using the ":authority" pseudo-header.  The value is the
+   fully-qualified authority component of the request, comprised of the
+   host and, optionally, port of the request target, as a string.
+
+   For example, the following request message:
+
+   POST /path?param=value HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@authority" value:
+
+   "@authority": www.example.com
+
+2.3.4.  Scheme
+
+   The "@scheme" identifier refers to the scheme of the target URL of
+   the HTTP request message.  The value is the scheme as a string.
+
+   For example, the following request message requested over plain HTTP:
+
+   POST /path?param=value HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@scheme" value:
+
+   "@scheme": http
+
+2.3.5.  Request Origin
+
+   The "@request-origin" identifier refers to the full origin component
+   of the HTTP request message.  The value is combination of the
+   absolute path and query components of the request URL.
+
+   For example, the following request message:
+
+   POST /path?param=value HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@request-origin" value:
+
+   "@request-origin": /path?param=value
+
+   The following OPTIONS request message:
+
+   OPTIONS * HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@request-origin" value:
+
+   "@request-origin": *
+
+2.3.6.  Path
+
+   The "@path" identifier refers to the target path of the HTTP request
+   message.  The value is the absolute path of the request target, with
+   no query parameters and no trailing "?" character.
+
+   For example, the following request message:
+
+   POST /path?param=value HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@path" value:
+
+   "@path": /path
+
+2.3.7.  Query Components
+
+   The "@query" identifier refers to the query parameters of the HTTP
+   request message.  When the identifier is used with no parameters, the
+   value is the entire normalized query string, not including the
+   leading "?" character.
+
+   For example, the following request message:
+
+   POST /path?param=value&foo=bar&baz=batman HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@query" value:
+
+   "@query": param=value&foo=bar&baz=batman
+
+   The identifier supports an OPTIONAL "key" parameter containing the
+   name of a single query parameter.  When this parameter is present,
+   the value is the normalized key-value pair of the named query
+   parameter, not including any leading "?" characters or separating "&"
+   characters.
+
+   POST /path?param=value&foo=bar&baz=batman HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@query" value:
+
+   "@query";key="baz": baz=batman
+   "@query";key="param": param=value
+
+2.3.8.  Status Code
+
+   The "@status-code" identifier refers to the HTTP status code of a
+   response message.  The value is the serialized integer of the HTTP
+   response code, with no descriptive text.
+
+   For example, the following response message:
+
+   HTTP/1.1 200 OK
+   Date: Fri, 26 Mar 2010 00:05:00 GMT
+
+   Would result in the following "@status-code" value:
+
+   "@status-code": 200
+
+2.4.  Creating the Signature Input String
 
    The signature input is a US-ASCII string containing the content that
    is covered by the signature.  To create the signature input string,
@@ -704,11 +778,11 @@ Table of Contents
        3.  Append a single space "" ""
 
        4.  Append the covered content's canonicalized value, as defined
-           by the covered content type.  (Section 2.1 and Section 2.4)
+           by the covered content type.  (Section 2.1 and Section 2.3)
 
        5.  Append a single newline ""\\n""
 
-   3.  Append the signature parameters (Section 2.4.2) as follows:
+   3.  Append the signature parameters (Section 2.3.1) as follows:
 
        1.  Append the identifier for the signature parameters serialized
            according to the "content-identifier" rule, ""@signature-
@@ -719,7 +793,7 @@ Table of Contents
        3.  Append a single space "" ""
 
        4.  Append the signature parameters' canonicalized value as
-           defined in Section 2.4.2
+           defined in Section 2.3.1
 
    4.  Return the output string.
 
@@ -736,20 +810,11 @@ Table of Contents
       header field that is not present in the message, is not a
       Dictionary Structured Field, or whose value is malformed.
 
-   *  The identifier is a List Prefix member identifier that references
-      a header field that is not present in the message, is not a List
-      Structured Field, or whose value is malformed.
-
    *  The identifier is a Dictionary member identifier that references a
       member that is not present in the header field value, or whose
       value is malformed.  E.g., the identifier is
-      ""x-dictionary";key=c" and the value of the "x-dictionary" header
-      field is "a=1, b=2"
-
-   *  The identifier is a List Prefix member identifier that specifies
-      more List members than are present the header field.  E.g., the
-      identifier is ""x-list";prefix=3" and the value of the "x-list"
-      header field is "(1, 2)".
+      ""x-dictionary";key="c"" and the value of the "x-dictionary"
+      header field is "a=1, b=2"
 
    In the following non-normative example, the HTTP message being signed
    is the following request:
@@ -763,8 +828,8 @@ Table of Contents
    Cache-Control: max-age=60
    Cache-Control: must-revalidate
 
-   The covered content consists of the "@request-target" speciality
-   header followed by the "Host", "Date", "Cache-Control", "X-Empty-
+   The covered content consists of the "@request-target" specialty
+   content followed by the "Host", "Date", "Cache-Control", "X-Empty-
    Header", "X-Example" HTTP headers, in order.  The signature creation
    timestamp is "1618884475" and the key identifier is "test-key-rsa-
    pss".  The signature input string for this message with these
@@ -819,11 +884,11 @@ Table of Contents
 
        *  Each covered content identifier MUST either reference an HTTP
           header in the request message Section 2.1 or reference a
-          specialty content field listed in Section 2.4 or its
+          specialty content field listed in Section 2.3 or its
           associated registry.
 
        *  Signers SHOULD include "@request-target" in the covered
-          content list list.
+          content list.
 
        *  Signers SHOULD include a date stamp in some form, such as
           using the "date" header.  Alternatively, the "created"
@@ -840,7 +905,7 @@ Table of Contents
           in the signature input.  This ensures that a signature always
           covers its own metadata.
 
-   5.  The signer creates the signature input string.  (Section 2.5)
+   5.  The signer creates the signature input string.  (Section 2.4)
 
    6.  The signer signs the signature input with the chosen signing
        algorithm using the key material chosen by the signer.  Several
@@ -851,17 +916,18 @@ Table of Contents
        header as defined in Section 4.2.
 
    For example, given the HTTP message and signature parameters in the
-   example in Section 2.5, the example signature input string when
+   example in Section 2.4, the example signature input string when
    signed with the "test-key-rsa-pss" key in Appendix B.1.2 gives the
    following message signature output value, encoded in Base64:
 
-:H00a6KdNCRWgOWBMvuRtxh6c/wrVxwt2p5KyqBJqmtPbNTd980hWwkUE6H4NWiTs5f2Ef0\
-qJ3iypXT2bR9Pc+PVU9U2gAzTcZKK8MDJLjYKfaE835zg/9sOdGR+tlRJ1cbCoWMVoCgEPi\
-4t6QewbI0xgdx8AmP5ItTunYmhe8G0JR42lfvz60+szb8SpwJEmkMPr5dBOz6DLEeM3IgKN\
-oBlJPp94WSJkgvwTM64rXw049ZkYenl9jwKlcXEmA1a4MNWoUElr6eh5k20djMZftCYTPUU\
-PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
+   lPxkxqDEPhgrx1yPaKLO7eJ+oPjSwsQ5NjWNRfYP7Jw0FwnK1k8/GH7g5s2q0VTTKVm\
+   xyfpUDp/HsDphh5Z7Fa/lvtujHyFe/0EP9z7bnVb7YBZrxV52LGvP8p4APhOYuG4yaH\
+   z478GsJav9BQYK0B2IOHdLFJe8qwWPJs07J47gPewpNwCt0To/zZ2KPpylGX5UHVgJP\
+   Uom64KjX43u2OwIvSoPEYk4nuBvLR9yxYAHURaTfLoEDUCtY1FsU1hOfG3jAlcT6ill\
+   fnyS72PEdSSzw1KsxroMj9IYpFhva77YxmJRk4pCIW0F0Kj0ukl7J4y2aZJHMCYI3g8\
+   yfqh/wQ==
 
-           Figure 2: Non-normative example signature value
+              Figure 2: Non-normative example signature value
 
 3.2.  Verifying a Signature
 
@@ -927,9 +993,9 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
 
    7.  Use the received HTTP message and the signature's metadata to
        recreate the signature input, using the process described in
-       Section 2.5.  The value of the "@signature-params" input is the
+       Section 2.4.  The value of the "@signature-params" input is the
        value of the SignatureInput header field for this signature
-       serialized according to the rules described in Section 2.4.2, not
+       serialized according to the rules described in Section 2.3.1, not
        including the signature's label from the "Signature-Input"
        header.
 
@@ -983,7 +1049,7 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
    or MAC method that is appropriate for the key material, environment,
    and needs of the signer and verifier.  All signatures are generated
    from and verified against the byte values of the signature input
-   string defined in Section 2.5.
+   string defined in Section 2.4.
 
    Each signature algorithm method takes as its input the signature
    input string as a set of byte values ("I"), the signing key material
@@ -1001,56 +1067,60 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
 
    This section contains several common algorithm methods.  The method
    to use can be communicated through the algorithm signature parameter
-   defined in Section 2.4.2, by reference to the key material, or
+   defined in Section 2.3.1, by reference to the key material, or
    through mutual agreement between the signer and verifier.
 
 3.3.1.  RSASSA-PSS using SHA-512
 
    To sign using this algorithm, the signer applies the "RSASSA-PSS-SIGN
    (K, M)" function [RFC8017] with the signer's private signing key
-   ("K") and the signature input string ("M") (Section 2.5).  The hash
-   SHA-512 [RFC6234] is applied to the signature input string to create
-   the digest content to which the digital signature is applied.  The
-   resulting signed content byte array ("S") is the HTTP message
-   signature output used in Section 3.1.
+   ("K") and the signature input string ("M") (Section 2.4).  The mask
+   generation function is "MGF1" as specified in [RFC8017] with a hash
+   function of SHA-512 [RFC6234].  The salt length ("sLen") is 64 bytes.
+   The hash function ("Hash") SHA-512 [RFC6234] is applied to the
+   signature input string to create the digest content to which the
+   digital signature is applied.  The resulting signed content byte
+   array ("S") is the HTTP message signature output used in Section 3.1.
 
    To verify using this algorithm, the verifier applies the "RSASSA-PSS-
    VERIFY ((n, e), M, S)" function [RFC8017] using the public key
    portion of the verification key material ("(n, e)") and the signature
-   input string ("M") re-created as described in Section 3.2.  The hash
-   function SHA-512 [RFC6234] is applied to the signature input string
-   to create the digest content to which the verification function is
-   applied.  The verifier extracts the HTTP message signature to be
-   verified ("S") as described in Section 3.2.  The results of the
-   verification function are compared to the http message signature to
-   determine if the signature presented is valid.
+   input string ("M") re-created as described in Section 3.2.  The mask
+   generation function is "MGF1" as specified in [RFC8017] with a hash
+   function of SHA-512 [RFC6234].  The salt length ("sLen") is 64 bytes.
+   The hash function ("Hash") SHA-512 [RFC6234] is applied to the
+   signature input string to create the digest content to which the
+   verification function is applied.  The verifier extracts the HTTP
+   message signature to be verified ("S") as described in Section 3.2.
+   The results of the verification function are compared to the http
+   message signature to determine if the signature presented is valid.
 
 3.3.2.  RSASSA-PKCS1-v1_5 using SHA-256
 
    To sign using this algorithm, the signer applies the "RSASSA-
    PKCS1-V1_5-SIGN (K, M)" function [RFC8017] with the signer's private
-   signing key ("K") and the signature input string ("M") (Section 2.5).
+   signing key ("K") and the signature input string ("M") (Section 2.4).
    The hash SHA-256 [RFC6234] is applied to the signature input string
    to create the digest content to which the digital signature is
    applied.  The resulting signed content byte array ("S") is the HTTP
    message signature output used in Section 3.1.
 
-   To verify using this algorithm, the verifier applies the "RSASSA-PSS-
-   VERIFY ((n, e), M, S)" function [RFC8017] using the public key
-   portion of the verification key material ("(n, e)") and the signature
-   input string ("M") re-created as described in Section 3.2.  The hash
-   function SHA-256 [RFC6234] is applied to the signature input string
-   to create the digest content to which the verification function is
-   applied.  The verifier extracts the HTTP message signature to be
-   verified ("S") as described in Section 3.2.  The results of the
-   verification function are compared to the http message signature to
-   determine if the signature presented is valid.
+   To verify using this algorithm, the verifier applies the "RSASSA-
+   PKCS1-V1_5-VERIFY ((n, e), M, S)" function [RFC8017] using the public
+   key portion of the verification key material ("(n, e)") and the
+   signature input string ("M") re-created as described in Section 3.2.
+   The hash function SHA-256 [RFC6234] is applied to the signature input
+   string to create the digest content to which the verification
+   function is applied.  The verifier extracts the HTTP message
+   signature to be verified ("S") as described in Section 3.2.  The
+   results of the verification function are compared to the http message
+   signature to determine if the signature presented is valid.
 
 3.3.3.  HMAC using SHA-256
 
    To sign and verify using this algorithm, the signer applies the
    "HMAC" function [RFC2104] with the shared signing key ("K") and the
-   signature input string ("text") (Section 2.5).  The hash function
+   signature input string ("text") (Section 2.4).  The hash function
    SHA-256 [RFC6234] is applied to the signature input string to create
    the digest content to which the HMAC is applied, giving the signature
    result.
@@ -1068,7 +1138,7 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
 
    To sign using this algorithm, the signer applies the "ECDSA"
    algorithm [FIPS186-4] using curve P-256 with the signer's private
-   signing key and the signature input string (Section 2.5).  The hash
+   signing key and the signature input string (Section 2.4).  The hash
    SHA-256 [RFC6234] is applied to the signature input string to create
    the digest content to which the digital signature is applied.  The
    resulting signed content byte array is the HTTP message signature
@@ -1095,7 +1165,7 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
    signing algorithms.
 
    For both signing and verification, the HTTP messages signature input
-   string (Section 2.5) is used as the entire "JWS Signing Input".  The
+   string (Section 2.4) is used as the entire "JWS Signing Input".  The
    JOSE Header defined in [RFC7517] is not used, and the signature input
    string is not first encoded in Base64 before applying the algorithm.
    The output of the JWS signature is taken as a byte array prior to the
@@ -1113,7 +1183,7 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
    An HTTP message signature MUST use both headers: the "Signature" HTTP
    header field contains the signature value, while the "Signature-
    Input" HTTP header field identifies the covered content and
-   parameters that describe how the signature was generated.  The Each
+   parameters that describe how the signature was generated.  Each
    header MAY contain multiple labeled values, where the labels
    determine the correlation between the "Signature" and "Signature-
    Input" fields.
@@ -1127,11 +1197,11 @@ PMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR+ZEwSaZQBrdQ==:
    identifier that uniquely identifies the message signature within the
    context of the HTTP message.  The member's value is the serialization
    of the covered content including all signature metadata parameters,
-   using the serialization process defined in Section 2.4.2.
+   using the serialization process defined in Section 2.3.1.
 
-Signature-Input: sig1=("@request-target" "host" "date" "cache-control" \
-  "x-empty-header" "x-example");created=1618884475;\
-  keyid="test-key-rsa-pss"
+   Signature-Input: sig1=("@request-target" "host" "date" \
+     "cache-control" "x-empty-header" "x-example");created=1618884475\
+     ;keyid="test-key-rsa-pss"
 
    To facilitate signature validation, the "Signature-Input" header
    value MUST contain the same serialized value used in generating the
@@ -1150,12 +1220,12 @@ Signature-Input: sig1=("@request-target" "host" "date" "cache-control" \
    member in the HTTP message's "Signature-Input" HTTP header field MUST
    be ignored.
 
-Signature: sig1=:H00a6KdNCRWgOWBMvuRtxh6c/wrVxwt2p5KyqBJqmtPbNTd980hWwk\
-  UE6H4NWiTs5f2Ef0qJ3iypXT2bR9Pc+PVU9U2gAzTcZKK8MDJLjYKfaE835zg/9sOdGR+\
-  tlRJ1cbCoWMVoCgEPi4t6QewbI0xgdx8AmP5ItTunYmhe8G0JR42lfvz60+szb8SpwJEm\
-  kMPr5dBOz6DLEeM3IgKNoBlJPp94WSJkgvwTM64rXw049ZkYenl9jwKlcXEmA1a4MNWoU\
-  Elr6eh5k20djMZftCYTPUUPMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1aSVfKQQzR\
-  +ZEwSaZQBrdQ==:
+   Signature: sig1=:lPxkxqDEPhgrx1yPaKLO7eJ+oPjSwsQ5NjWNRfYP7Jw0FwnK1k\
+     8/GH7g5s2q0VTTKVmxyfpUDp/HsDphh5Z7Fa/lvtujHyFe/0EP9z7bnVb7YBZrxV5\
+     2LGvP8p4APhOYuG4yaHz478GsJav9BQYK0B2IOHdLFJe8qwWPJs07J47gPewpNwCt\
+     0To/zZ2KPpylGX5UHVgJPUom64KjX43u2OwIvSoPEYk4nuBvLR9yxYAHURaTfLoED\
+     UCtY1FsU1hOfG3jAlcT6illfnyS72PEdSSzw1KsxroMj9IYpFhva77YxmJRk4pCIW\
+     0F0Kj0ukl7J4y2aZJHMCYI3g8yfqh/wQ==:
 
 4.3.  Multiple Signatures
 
@@ -1169,53 +1239,55 @@ Signature: sig1=:H00a6KdNCRWgOWBMvuRtxh6c/wrVxwt2p5KyqBJqmtPbNTd980hWwk\
    signature over those fields and the client's original signature.
 
    The following is a non-normative example of header fields a reverse
-   proxy in addition to the examples in the previous sections.  The
+   proxy sets in addition to the examples in the previous sections.  The
    original signature is included under the identifier "sig1", and the
    reverse proxy's signature is included under "proxy_sig".  The proxy
    uses the key "rsa-test-key" to create its signature using the "rsa-
    v1_5-sha256" signature value.  This results in a signature input
    string of:
 
-"signature";key="sig1": :H00a6KdNCRWgOWBMvuRtxh6c/wrVxwt2p5KyqBJqmtPbNT\
-  d980hWwkUE6H4NWiTs5f2Ef0qJ3iypXT2bR9Pc+PVU9U2gAzTcZKK8MDJLjYKfaE835zg\
-  /9sOdGR+tlRJ1cbCoWMVoCgEPi4t6QewbI0xgdx8AmP5ItTunYmhe8G0JR42lfvz60+sz\
-  b8SpwJEmkMPr5dBOz6DLEeM3IgKNoBlJPp94WSJkgvwTM64rXw049ZkYenl9jwKlcXEmA\
-  1a4MNWoUElr6eh5k20djMZftCYTPUUPMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1a\
-  SVfKQQzR+ZEwSaZQBrdQ==:
-x-forwarded-for: 192.0.2.123
-"@signature-params": ("signature";key="sig1" x-forwarded-for)\
-  ;created=1618884475;keyid="test-key-rsa";alg="rsa-v1_5-sha256"
+   "signature";key="sig1": \
+     :lPxkxqDEPhgrx1yPaKLO7eJ+oPjSwsQ5NjWNRfYP7Jw0FwnK1k8/GH7g5s2q0VTT\
+     KVmxyfpUDp/HsDphh5Z7Fa/lvtujHyFe/0EP9z7bnVb7YBZrxV52LGvP8p4APhOYu\
+     G4yaHz478GsJav9BQYK0B2IOHdLFJe8qwWPJs07J47gPewpNwCt0To/zZ2KPpylGX\
+     5UHVgJPUom64KjX43u2OwIvSoPEYk4nuBvLR9yxYAHURaTfLoEDUCtY1FsU1hOfG3\
+     jAlcT6illfnyS72PEdSSzw1KsxroMj9IYpFhva77YxmJRk4pCIW0F0Kj0ukl7J4y2\
+     aZJHMCYI3g8yfqh/wQ==:
+   "x-forwarded-for": 192.0.2.123
+   "@signature-params": ("signature";key="sig1" "x-forwarded-for")\
+     ;created=1618884480;keyid="test-key-rsa";alg="rsa-v1_5-sha256"
 
    And a signature output value of:
 
-:NgQsRJwOL/EgoRXdcmHMOLZM+KWqLDsO76CrqoiLH279VJs9Fj6bn4V+perAEUbHBEMFCb\
-l6tucEVgKrU+5IIyDMBI85FExQeuBrNPALczjCdxne6LUoBcWBAk8NoRyjfd++DXIAjAZcf\
-/hBUXLll+5veI0ynzBRFTZ4v8AbluYODjJlSprYEwUb2ndbFr12vzgIpy0uTQCslN+3rUUZ\
-+lQWlrILvbR0CIvtGwk2+hE0dTRAG0R3wmlR24mhSqiE5RADyoSWQVjVxntp98XHAB6MZE9\
-2bbu2a8Uo951Hvah03XHWEk/WiYdq+mt3hwXVPLXlBU9DWCo2AaYD/rkXtQ==:
+   XD1O/vEh772WVpY7jYvReXop2+b7xTIIPKH8/OCYzPn78Wd9jodCwAJPF5TYCn9L6n6\
+   8j4EjGsqFOMkVLVdSQEZqMLjEbvMEdIe8m1a0CLd5kydeaAwoHoglqod6ijkwhhEtxt\
+   aD8tDZmihQw2mZEH8u4aMSnRntqy7ExCNld0JLharsHV0iCbRO9jIP+d2ApD7gB+eZp\
+   n3pIvvVJZlxTwPkahFpxKlQtNMPaSqa1lvejURx+ST8CEuz4sS+G/oLJiX3MZenuUoO\
+   R8HeOHDnjN/VLzrEN4x44iF7WIL+iY2PtK87LUWRAsJAX9GqHL/upsGh1nxIdoVaoLV\
+   V5w+fRw==
 
    These values are added to the HTTP request message by the proxy.  The
    different signature values are wrapped onto separate lines to
    increase human-readability of the result.
 
    X-Forwarded-For: 192.0.2.123
-   Signature-Input: sig1=("@request-target" "host" "date" "cache-control" \
-       "x-empty-header" "x-example");created=1618884475\
-       ;keyid="test-key-rsa-pss", \
-     proxy_sig=("signature";key="sig1" x-forwarded-for);created=1618884480\
-       ;keyid="test-key-rsa";alg="rsa-v1_5-sha256"
-   Signature: sig1=:H00a6KdNCRWgOWBMvuRtxh6c/wrVxwt2p5KyqBJqmtPbNTd980hWwk\
-       UE6H4NWiTs5f2Ef0qJ3iypXT2bR9Pc+PVU9U2gAzTcZKK8MDJLjYKfaE835zg/9sOdG\
-       R+tlRJ1cbCoWMVoCgEPi4t6QewbI0xgdx8AmP5ItTunYmhe8G0JR42lfvz60+szb8Sp\
-       wJEmkMPr5dBOz6DLEeM3IgKNoBlJPp94WSJkgvwTM64rXw049ZkYenl9jwKlcXEmA1a\
-       4MNWoUElr6eh5k20djMZftCYTPUUPMxZUavcQy+cp6lfKonz6HIDe3+n3VOTOo8uu1a\
-       SVfKQQzR+ZEwSaZQBrdQ==:, \
-     proxy_sig=:NgQsRJwOL/EgoRXdcmHMOLZM+KWqLDsO76CrqoiLH279VJs9Fj6bn4V+pe\
-       rAEUbHBEMFCbl6tucEVgKrU+5IIyDMBI85FExQeuBrNPALczjCdxne6LUoBcWBAk8No\
-       Ryjfd++DXIAjAZcf/hBUXLll+5veI0ynzBRFTZ4v8AbluYODjJlSprYEwUb2ndbFr12\
-       vzgIpy0uTQCslN+3rUUZ+lQWlrILvbR0CIvtGwk2+hE0dTRAG0R3wmlR24mhSqiE5RA\
-       DyoSWQVjVxntp98XHAB6MZE92bbu2a8Uo951Hvah03XHWEk/WiYdq+mt3hwXVPLXlBU\
-       9DWCo2AaYD/rkXtQ==:
+   Signature-Input: sig1=("@request-target" "host" "date" \
+       "cache-control" "x-empty-header" "x-example")\
+       ;created=1618884475;keyid="test-key-rsa-pss", \
+     proxy_sig=("signature";key="sig1" "x-forwarded-for")\
+       ;created=1618884480;keyid="test-key-rsa";alg="rsa-v1_5-sha256"
+   Signature: sig1=:lPxkxqDEPhgrx1yPaKLO7eJ+oPjSwsQ5NjWNRfYP7Jw0FwnK1k\
+       8/GH7g5s2q0VTTKVmxyfpUDp/HsDphh5Z7Fa/lvtujHyFe/0EP9z7bnVb7YBZrx\
+       V52LGvP8p4APhOYuG4yaHz478GsJav9BQYK0B2IOHdLFJe8qwWPJs07J47gPewp\
+       NwCt0To/zZ2KPpylGX5UHVgJPUom64KjX43u2OwIvSoPEYk4nuBvLR9yxYAHURa\
+       TfLoEDUCtY1FsU1hOfG3jAlcT6illfnyS72PEdSSzw1KsxroMj9IYpFhva77Yxm\
+       JRk4pCIW0F0Kj0ukl7J4y2aZJHMCYI3g8yfqh/wQ==:, \
+     proxy_sig=:XD1O/vEh772WVpY7jYvReXop2+b7xTIIPKH8/OCYzPn78Wd9jodCwA\
+       JPF5TYCn9L6n68j4EjGsqFOMkVLVdSQEZqMLjEbvMEdIe8m1a0CLd5kydeaAwoH\
+       oglqod6ijkwhhEtxtaD8tDZmihQw2mZEH8u4aMSnRntqy7ExCNld0JLharsHV0i\
+       CbRO9jIP+d2ApD7gB+eZpn3pIvvVJZlxTwPkahFpxKlQtNMPaSqa1lvejURx+ST\
+       8CEuz4sS+G/oLJiX3MZenuUoOR8HeOHDnjN/VLzrEN4x44iF7WIL+iY2PtK87LU\
+       WRAsJAX9GqHL/upsGh1nxIdoVaoLVV5w+fRw==:
 
    The proxy's signature and the client's original signature can be
    verified independently for the same message, depending on the needs
@@ -1232,6 +1304,16 @@ l6tucEVgKrU+5IIyDMBI85FExQeuBrNPALczjCdxne6LUoBcWBAk8NoRyjfd++DXIAjAZcf\
    assignment are to be made through the Expert Review registration
    policy [RFC8126] and shall follow the template presented in
    Section 5.1.1.
+
+   Algorithms referenced by algorithm identifiers have to be fully
+   defined with all parameters fixed.  Algorithm identifiers in this
+   registry are to be interpreted as whole string values and not as a
+   combination of parts.  That is to say, it is expected that
+   implementors understand "rsa-pss-sha512" as referring to one specific
+   algorithm with its hash, mask, and salt values set as defined here.
+   Implementors do not parse out the "rsa", "pss", and "sha512" portions
+   of the identifier to determine parameters of the signing algorithm
+   from the string.
 
 5.1.1.  Registration Template
 
@@ -1340,18 +1422,18 @@ l6tucEVgKrU+5IIyDMBI85FExQeuBrNPALczjCdxne6LUoBcWBAk8NoRyjfd++DXIAjAZcf\
            +=========+========+================================+
            | Name    | Status | Reference(s)                   |
            +=========+========+================================+
-           | alg     | Active | Section 2.4.2 of this document |
+           | alg     | Active | Section 2.3.1 of this document |
            +---------+--------+--------------------------------+
-           | created | Active | Section 2.4.2 of this document |
+           | created | Active | Section 2.3.1 of this document |
            +---------+--------+--------------------------------+
-           | expires | Active | Section 2.4.2 of this document |
+           | expires | Active | Section 2.3.1 of this document |
            +---------+--------+--------------------------------+
-           | keyid   | Active | Section 2.4.2 of this document |
+           | keyid   | Active | Section 2.3.1 of this document |
            +---------+--------+--------------------------------+
-           | nonce   | Active | Section 2.4.2 of this document |
+           | nonce   | Active | Section 2.3.1 of this document |
            +---------+--------+--------------------------------+
 
-              Table 5: Initial contents of the HTTP Signature
+              Table 3: Initial contents of the HTTP Signature
                        Metadata Parameters Registry.
 
 5.3.  HTTP Signature Specialty Content Identifiers Registry
@@ -1376,14 +1458,26 @@ l6tucEVgKrU+5IIyDMBI85FExQeuBrNPALczjCdxne6LUoBcWBAk8NoRyjfd++DXIAjAZcf\
    Specialty Content Identifiers Registry.
 
       +===================+========+================================+
-      | Name              | Status | Reference(s)                   |
+      | Name              | Status | Reference                      |
       +===================+========+================================+
-      | @request-target   | Active | Section 2.4.1 of this document |
+      | @signature-params | Active | Section 2.3.1 of this document |
       +-------------------+--------+--------------------------------+
-      | @signature-params | Active | Section 2.4.2 of this document |
+      | @method           | Active | Section 2.3.2 of this document |
+      +-------------------+--------+--------------------------------+
+      | @authority        | Active | Section 2.3.3 of this document |
+      +-------------------+--------+--------------------------------+
+      | @scheme           | Active | Section 2.3.4 of this document |
+      +-------------------+--------+--------------------------------+
+      | @request-origin   | Active | Section 2.3.5 of this document |
+      +-------------------+--------+--------------------------------+
+      | @path             | Active | Section 2.3.6 of this document |
+      +-------------------+--------+--------------------------------+
+      | @query-param      | Active | Section 2.3.7 of this document |
+      +-------------------+--------+--------------------------------+
+      | @status-code      | Active | Section 2.3.8 of this document |
       +-------------------+--------+--------------------------------+
 
-         Table 6: Initial contents of the HTTP Signature Specialty
+         Table 4: Initial contents of the HTTP Signature Specialty
                        Content Identifiers Registry.
 
 6.  Security Considerations
@@ -1408,11 +1502,6 @@ l6tucEVgKrU+5IIyDMBI85FExQeuBrNPALczjCdxne6LUoBcWBAk8NoRyjfd++DXIAjAZcf\
               "Digital Signature Standard (DSS)", 2013,
               <https://csrc.nist.gov/publications/detail/fips/186/4/
               final>.
-
-   [HTTP2]    Belshe, M., Peon, R., and M. Thomson, Ed., "Hypertext
-              Transfer Protocol Version 2 (HTTP/2)", RFC 7540,
-              DOI 10.17487/RFC7540, May 2015,
-              <https://datatracker.ietf.org/doc/html/rfc7540>.
 
    [MESSAGING]
               Fielding, R., Ed. and J. Reschke, Ed., "Hypertext Transfer
@@ -1497,9 +1586,9 @@ Appendix A.  Detecting HTTP Message Signatures
    past, including other non-standard definitions of the "Signature"
    header used within this specification.  It is recommended that
    developers wishing to support both this specification and other
-   historial drafts do so carefully and deliberately, as
+   historical drafts do so carefully and deliberately, as
    incompatibilities between this specification and various versions of
-   other drafts could lead to problems.
+   other drafts could lead to unexpected problems.
 
    It is recommended that implementers first detect and validate the
    "Signature-Input" header defined in this specification to detect that
@@ -1563,7 +1652,7 @@ B.1.1.  Example Key RSA test
    EQeNC8fHGg4UXU8mhHnSBt3EA10qQJfRDs15M38eG2cYwB1PZpDHScDnDA0=
    -----END RSA PRIVATE KEY-----
 
-B.1.2.  Example Key RSA PSS test
+B.1.2.  Example RSA PSS Key
 
    The following key is a 2048-bit RSA public and private key pair,
    referred to in this document as "test-key-rsa-pss":
@@ -1607,11 +1696,37 @@ B.1.2.  Example Key RSA PSS test
    rOjr9w349JooGXhOxbu8nOxX
    -----END PRIVATE KEY-----
 
+B.1.3.  Example ECC P-256 Test Key
+
+   The following key is an elliptical curve key over the curve P-256,
+   referred to in this document as "test-key-ecc-p256".
+
+   -----BEGIN EC PRIVATE KEY-----
+   MHcCAQEEIFKbhfNZfpDsW43+0+JjUr9K+bTeuxopu653+hBaXGA7oAoGCCqGSM49
+   AwEHoUQDQgAEqIVYZVLCrPZHGHjP17CTW0/+D9Lfw0EkjqF7xB4FivAxzic30tMM
+   4GF+hR6Dxh71Z50VGGdldkkDXZCnTNnoXQ==
+   -----END EC PRIVATE KEY-----
+
+   -----BEGIN PUBLIC KEY-----
+   MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEqIVYZVLCrPZHGHjP17CTW0/+D9Lf
+   w0EkjqF7xB4FivAxzic30tMM4GF+hR6Dxh71Z50VGGdldkkDXZCnTNnoXQ==
+   -----END PUBLIC KEY-----
+
+B.1.4.  Example Shared Secret
+
+   The following shared secret is 64 randomly-generated bytes encoded in
+   Base64, referred to in this document as "test-shared-secret".
+
+   uzvJfB4u3N0Jy4T7NZ75MDVcr8zSTInedJtkgcu46YW4XByzNJjxBdtjUkdJPBt\
+     bmHhIDi6pcl8jsasjlTMtDQ==
+
 B.2.  Test Cases
 
    This section provides non-normative examples that may be used as test
    cases to validate implementation correctness.  These examples are
-   based on the following HTTP message:
+   based on the following HTTP messages:
+
+   For requests, this "test-request" message is used:
 
    POST /foo?param=value&pet=dog HTTP/1.1
    Host: example.com
@@ -1622,83 +1737,141 @@ B.2.  Test Cases
 
    {"hello": "world"}
 
+   For responses, this "test-response" message is used:
+
+   HTTP/1.1 200 OK
+   Date: Tue, 20 Apr 2021 02:07:56 GMT
+   Content-Type: application/json
+   Digest: SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=
+   Content-Length: 18
+
+   {"hello": "world"}
+
 B.2.1.  Minimal Signature Header using rsa-pss-sha512
 
    This example presents a minimal "Signature-Input" and "Signature"
-   header for a signature using the "rsa-pss-sha512" algorithm, covering
-   none of the content of the HTTP message request but providing a
-   timestamped signature proof of possession of the key.
+   header for a signature using the "rsa-pss-sha512" algorithm over
+   "test-request", covering none of the content of the HTTP message
+   request but providing a timestamped signature proof of possession of
+   the key.
 
    The corresponding signature input is:
 
-   "@signature-params": ();created=1618884475;keyid="test-key-rsa-pss"\
-     ;alg="rsa-pss-sha512"
+   "@signature-params": ();created=1618884475\
+     ;keyid="test-key-rsa-pss";alg="rsa-pss-sha512"
 
    This results in the following "Signature-Input" and "Signature"
    headers being added to the message:
 
-   Signature-Input: sig1=();created=1618884475;keyid="test-key-rsa-pss"\
-     ;alg="rsa-pss-sha512"
-   Signature: sig1=:qGKjr1213+iZCU1MCV8w2NTr/HvMGWYDzpqAWx7SrPE1y6gOkIQ3k2\
-     GlZDu9KnKnLN6LKX0JRa2M5vU9v/b0GjV0WSInMMKQJExJ/e9Y9K8q2eE0G9saGebEaWd\
-     R3Ao47odxLh95hBtejKIdiUBmQcQSAzAkoQ4aOZgvrHgkmvQDZQL0w30+8lMz3VglmN73\
-     CKp/ijZemO1iPdNwrdhAtDvj9OdFVJ/wiUECfU78aQWkQocvwrZXTmHCX9BMVUHGneXMY\
-     NQ0Y8umEHjxpnnLLvxUbw2KZrflp+l6m7WlhwXGJ15eAt1+mImanxUCtaKQJvEfcnOQ0S\
-     2jHysSRLheTA==:
+   Signature-Input: sig1=();created=1618884475\
+     ;keyid="test-key-rsa-pss";alg="rsa-pss-sha512"
+   Signature: sig1=:VrfdC2KEFFLoGMYTbQz4PSlKat4hAxcr5XkVN7Mm/7OQQJG+uX\
+     gOez7kA6n/yTCaR1VL+FmJd2IVFCsUfcc/jO9siZK3siadoK1Dfgp2ieh9eO781ty\
+     SS70OwvAkdORuQLWDnaDMRDlQhg5sNP6JaQghFLqD4qgFrM9HMPxLrznhAQugJ0Fd\
+     RZLtSpnjECW6qsu2PVRoCYfnwe4gu8TfqH5GDx2SkpCF9BQ8CijuIWlOg7QP73tKt\
+     QNp65u14Si9VEVXHWGiLw4blyPLzWz/fqJbdLaq94Ep60Nq8WjYEAInYH6KyV7EAD\
+     60LXdspwF50R3dkWXJP/x+gkAHSMsxbg==:
 
-B.2.2.  Header Coverage
+B.2.2.  Header Coverage using rsa-pss-sha512
 
-   This example covers all the specified headers in the example message.
+   This example covers all the specified headers in "test-request"
+   except for the body digest header using the "rsa-pss-sha512"
+   algorithm.
 
    The corresponding signature input is:
 
- "host": example.com
- "date": Tue, 20 Apr 2021 02:07:55 GMT
- "content-type": application/json
- "@signature-params": ("host" "date" "content-type");created=1618884475\
-   ;keyid="test-key-rsa-pss"
+   "host": example.com
+   "date": Tue, 20 Apr 2021 02:07:55 GMT
+   "content-type": application/json
+   "@signature-params": ("host" "date" "content-type")\
+     ;created=1618884475;keyid="test-key-rsa-pss"
 
    This results in the following "Signature-Input" and "Signature"
    headers being added to the message:
 
-Signature-Input: sig1=("host" "date" "content-type");created=1618884475\
-  ;keyid="test-key-rsa-pss"
-Signature: sig1=:NtIKWuXjr4SBEXj97gbick4O95ff378I0CZOa2VnIeEXZ1itzAdqTp\
-  SvG91XYrq5CfxCmk8zz1Zg7ZGYD+ngJyVn805r73rh2eFCPO+ZXDs45Is/Ex8srzGC9sf\
-  VZfqeEfApRFFe5yXDmANVUwzFWCEnGM6+SJVmWl1/jyEn45qA6Hw+ZDHbrbp6qvD4N0S9\
-  2jlPyVVEh/SmCwnkeNiBgnbt+E0K5wCFNHPbo4X1Tj406W+bTtnKzaoKxBWKW8aIQ7rg9\
-  2zqE1oqBRjqtRi5/Q6P5ZYYGGINKzNyV3UjZtxeZNnNJ+MAnWS0mofFqcZHVgSU/1wUzP\
-  7MhzOKLca1Yg==:
+   Signature-Input: sig1=("host" "date" "content-type")\
+     ;created=1618884475;keyid="test-key-rsa-pss"
+   Signature: sig1=:Zu48JBrHlXN+hVj3T5fPQUjMNEEhABM5vNmiWuUUl7BWNid5Rz\
+     OH1tEjVi+jObYkYT8p09lZ2hrNuU3xm+JUBT8WNIlopJtt0EzxFnjGlHvkhu3KbJf\
+     xNlvCJVlOEdR4AivDLMeK/ZgASpZ7py1UNHJqRyGCYkYpeedinXUertL/ySNp+VbK\
+     2O/qCoui2jFgff2kXQd6rjL1Up83Fpr+/KoZ6HQkv3qwBdMBDyHQykfZHhLn4AO1I\
+     G+vKhOLJQDfaLsJ/fYfzsgc1s46j3GpPPD/W2nEEtdhNwu7oXq81qVRsENChIu1XI\
+     FKR9q7WpyHDKEWTtaNZDS8TFvIQRU22w==:
 
-B.2.3.  Full Coverage
+B.2.3.  Full Coverage using rsa-pss-sha512
 
-   This example covers all headers in the example message plus the
-   request target and message body digest.
+   This example covers all headers in "test-request" plus the request
+   target and message body digest using the "rsa-pss-sha512" algorithm.
 
    The corresponding signature input is:
 
-  "@request-target": post /foo?param=value&pet=dog
-  "host": example.com
-  "date": Tue, 20 Apr 2021 02:07:55 GMT
-  "content-type": application/json
-  "digest": SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=
-  "content-length": 18
-  "@signature-params": ("@request-target" "host" "date" "content-type" \
-    "digest" "content-length");created=1618884475\
-    ;keyid="test-key-rsa-pss"
+   "@request-target": post /foo?param=value&pet=dog
+   "host": example.com
+   "date": Tue, 20 Apr 2021 02:07:55 GMT
+   "content-type": application/json
+   "digest": SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=
+   "content-length": 18
+   "@signature-params": ("@request-target" "host" "date" \
+     "content-type" "digest" "content-length");created=1618884475\
+     ;keyid="test-key-rsa-pss"
 
    This results in the following "Signature-Input" and "Signature"
    headers being added to the message:
 
-Signature-Input: sig1=("@request-target" "host" "date" "content-type" \
-  "digest" "content-length");created=1618884475\
-  ;keyid="test-key-rsa-pss"
-Signature: sig1=:QNPZtqAGWN1YMtsLJ1oyQMLg9TuIwjsIBESTo1/YXUsG+6Sl1uKUdT\
-  e9xswwrc3Ui3gUd4/tLv48NGih2TRDc1AWbEQDuy6pjroxSPtFjquubqzbszxit1arPNh\
-  ONnyR/8yuIh3bOXfc/NYJ3KLNaWR6MKrGinCYKTNwrX/0V67EMdSgd5HHnW5xHFgKfRCj\
-  rG3ncV+jbaeSPJ8e96RZgr8slcdwmqXdiwiIBCQDKRIQ3U2muJWvxyjV/IYhCTwAXJaUz\
-  sQPKzR5QWelXEVdHyv4WIB2lKaYh7mAsz0/ANxFYRRSp2Joms0OAnIAFX9kKCSp4p15/Q\
-  8L9vSIGNpQtw==:
+   Signature-Input: sig1=("@request-target" "host" "date" \
+     "content-type" "digest" "content-length");created=1618884475\
+     ;keyid="test-key-rsa-pss"
+   Signature: \
+     sig1=:iD5NhkJoGSuuTpWMzS0BI47DfbWwsGmHHLTwOxT0n+0cQFSC+1c26B7IOfI\
+     RTYofqD0sfYYrnSwCvWJfA1zthAEv9J1CxS/CZXe7CQvFpuKuFJxMpkAzVYdE/TA6\
+     fELxNZy9RJEWZUPBU4+aJ26d8PC0XhPObXe6JkP6/C7XvG2QinsDde7rduMdhFN/H\
+     j2MuX1Ipzvv4EgbHJdKwmWRNamfmKJZC4U5Tn0F58lzGF+WIpU73V67/6aSGvJGM5\
+     7U9bRHrBB7ExuQhOX2J2dvJMYkE33pEJA70XBUp9ZvciTI+vjIUgUQ2oRww3huWML\
+     mMMqEc95CliwIoL5aBdCnlQ==:
+
+B.2.4.  Signing a Response using ecdsa-p256-sha256
+
+   This example covers portions of the "test-response" response message
+   using the "ecdsa-p256-sha256" algorithm and the key "test-key-ecc-
+   p256".
+
+   The corresponding signature input is:
+
+   "date": Tue, 20 Apr 2021 02:07:56 GMT
+   "content-type": application/json
+   "digest": SHA-256=X48E9qOokqqrvdts8nOJRJN3OWDUoyWxBf7kbu9DBPE=
+   "content-length": 18
+   "@signature-params": ("date" "content-type" "digest" \
+     "content-length");created=1618884475;keyid="test-key-ecc-p256"
+
+   This results in the following "Signature-Input" and "Signature"
+   headers being added to the message:
+
+   Signature-Input: sig1=("date" "content-type" "digest" \
+     "content-length");created=1618884475;keyid="test-key-ecc-p256"
+   Signature: \
+     sig1=:3zmRDW6r50/RETqqhtx/N5sdd5eTh8xmHdsrYRK9wK4rCNEwLjCOBlcQxTL\
+     2oJTCWGRkuqE2r9KyqZFY9jd+NQ==:
+
+B.2.5.  Signing a Request using hmac-sha256
+
+   This example covers portions of the "test-request" using the "hmac-
+   sha256" algorithm and the secret "test-shared-secret".
+
+   The corresponding signature input is:
+
+   "host": example.com
+   "date": Tue, 20 Apr 2021 02:07:55 GMT
+   "content-type": application/json
+   "@signature-params": ("host" "date" "content-type")\
+     ;created=1618884475;keyid="test-shared-secret"
+
+   This results in the following "Signature-Input" and "Signature"
+   headers being added to the message:
+
+   Signature-Input: sig1=("host" "date" "content-type")\
+     ;created=1618884475;keyid="test-shared-secret"
+   Signature: sig1=:x54VEvVOb0TMw8fUbsWdUHqqqOre+K7sB/LqHQvnfaQ=:
 
 Acknowledgements
 
@@ -1724,6 +1897,21 @@ Document History
    _RFC EDITOR: please remove this section before publication_
 
    *  draft-ietf-httpbis-message-signatures
+
+      -  -06
+
+         o  Define new specialty content identifier, remove request-
+            target identifiers.
+
+      -  -05
+
+         o  Remove list prefixes.
+
+         o  Clarify signature algorithm parameters.
+
+         o  Update and fix examples.
+
+         o  Add examples for ECC and HMAC.
 
       -  -04
 
