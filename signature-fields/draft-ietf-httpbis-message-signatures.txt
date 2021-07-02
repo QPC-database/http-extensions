@@ -1534,30 +1534,39 @@ Table of Contents
    The table below contains the initial contents of the HTTP Signature
    Specialty Content Identifiers Registry.
 
-      +===================+========+================================+
-      | Name              | Status | Reference                      |
-      +===================+========+================================+
-      | @signature-params | Active | Section 2.3.1 of this document |
-      +-------------------+--------+--------------------------------+
-      | @method           | Active | Section 2.3.2 of this document |
-      +-------------------+--------+--------------------------------+
-      | @authority        | Active | Section 2.3.4 of this document |
-      +-------------------+--------+--------------------------------+
-      | @scheme           | Active | Section 2.3.5 of this document |
-      +-------------------+--------+--------------------------------+
-      | @target-uri       | Active | Section 2.3.3 of this document |
-      +-------------------+--------+--------------------------------+
-      | @request-target   | Active | Section 2.3.6 of this document |
-      +-------------------+--------+--------------------------------+
-      | @path             | Active | Section 2.3.7 of this document |
-      +-------------------+--------+--------------------------------+
-      | @query-param      | Active | Section 2.3.8 of this document |
-      +-------------------+--------+--------------------------------+
-      | @status-code      | Active | Section 2.3.9 of this document |
-      +-------------------+--------+--------------------------------+
+   +===================+========+===================+==================+
+   | Name              | Status | Target            | Reference        |
+   +===================+========+===================+==================+
+   | @signature-params | Active | Request,          | Section 2.3.1 of |
+   |                   |        | Response          | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @method           | Active | Request,          | Section 2.3.2 of |
+   |                   |        | Related-Response  | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @authority        | Active | Request,          | Section 2.3.4 of |
+   |                   |        | Related-Response  | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @scheme           | Active | Request,          | Section 2.3.5 of |
+   |                   |        | Related-Response  | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @target-uri       | Active | Request,          | Section 2.3.3 of |
+   |                   |        | Related-Response  | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @request-target   | Active | Request,          | Section 2.3.6 of |
+   |                   |        | Related-Response  | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @path             | Active | Request,          | Section 2.3.7 of |
+   |                   |        | Related-Response  | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @query-param      | Active | Request,          | Section 2.3.8 of |
+   |                   |        | Related-Response  | this document    |
+   +-------------------+--------+-------------------+------------------+
+   | @status-code      | Active | Response          | Section 2.3.9 of |
+   |                   |        |                   | this document    |
+   +-------------------+--------+-------------------+------------------+
 
-         Table 4: Initial contents of the HTTP Signature Specialty
-                       Content Identifiers Registry.
+     Table 4: Initial contents of the HTTP Signature Specialty Content
+                           Identifiers Registry.
 
 6.  Security Considerations
 
