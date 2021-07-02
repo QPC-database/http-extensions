@@ -5,10 +5,10 @@
 HTTP                                                     A. Backman, Ed.
 Internet-Draft                                                    Amazon
 Intended status: Standards Track                               J. Richer
-Expires: 1 January 2022                              Bespoke Engineering
+Expires: 3 January 2022                              Bespoke Engineering
                                                                M. Sporny
                                                           Digital Bazaar
-                                                            30 June 2021
+                                                             2 July 2021
 
 
                          Signing HTTP Messages
@@ -53,7 +53,7 @@ Status of This Memo
    time.  It is inappropriate to use Internet-Drafts as reference
    material or to cite them other than as "work in progress."
 
-   This Internet-Draft will expire on 1 January 2022.
+   This Internet-Draft will expire on 3 January 2022.
 
 Copyright Notice
 
@@ -86,12 +86,13 @@ Table of Contents
      2.3.  Specialty Content Fields
        2.3.1.  Signature Parameters
        2.3.2.  Method
-       2.3.3.  Authority
-       2.3.4.  Scheme
-       2.3.5.  Request Origin
-       2.3.6.  Path
-       2.3.7.  Query Components
-       2.3.8.  Status Code
+       2.3.3.  Target URI
+       2.3.4.  Authority
+       2.3.5.  Scheme
+       2.3.6.  Request Target
+       2.3.7.  Path
+       2.3.8.  Query Components
+       2.3.9.  Status Code
      2.4.  Creating the Signature Input String
    3.  HTTP Message Signatures
      3.1.  Creating a Signature
@@ -378,6 +379,15 @@ Table of Contents
       reject any RSA signatures, or a server expecting asymmetric
       cryptography should know to reject any symmetric cryptography.
 
+   An application using signatures also has to ensure that the verifier
+   will have access to all required information to re-create the
+   signature input string.  For example, a server behind a reverse proxy
+   would need to know the original request URI to make use of
+   identifiers like "@request-target".  Additionally, an application
+   using signatures in responses would need to ensure that clients
+   receiving signed responses have access to all the signed portions,
+   including any portions of the request that were signed by the server.
+
    The details of this kind of profiling are the purview of the
    application and outside the scope of this specification.
 
@@ -538,20 +548,21 @@ Table of Contents
 
    @method  The method used for a request.  (Section 2.3.2)
 
-   @authority  The authority for a request.  (Section 2.3.3)
+   @target-uri  The target URI for a request.  (Section 2.3.3)
 
-   @scheme  The scheme of the requested URI.  (Section 2.3.4)
+   @authority  The authority for a request.  (Section 2.3.4)
 
-   @request-origin  The origin-form of the request target.
-      (Section 2.3.5)
+   @scheme  The scheme of the requested URI.  (Section 2.3.5)
+
+   @request-target  The request target.  (Section 2.3.6)
 
    @path  The absolute path portion of the request target.
-      (Section 2.3.6)
-
-   @query-param  The parsed query parameters of the request target.
       (Section 2.3.7)
 
-   @status-code  The status code for a response.  (Section 2.3.8).
+   @query-param  The parsed query parameters of the request target.
+      (Section 2.3.8)
+
+   @status-code  The status code for a response.  (Section 2.3.9).
 
    Additional specialty content identifiers MAY be defined and
    registered in the HTTP Signatures Specialty Content Identifier
@@ -641,7 +652,31 @@ Table of Contents
 
    "@method": POST
 
-2.3.3.  Authority
+   If used in a response message, the "@method" identifier refers to the
+   associated value of the request that triggered the response message
+   being signed.
+
+2.3.3.  Target URI
+
+   The "@target-uri" identifier refers to the target URI of a request
+   message.  The value is the full absolute target URI of the request,
+   potentially assembled from all available parts including the
+   authority and request target.
+
+   For example, the following message sent over HTTPS:
+
+   POST /path?param=value HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@target-uri" value:
+
+   "@target-uri": https://www.example.com/path?param=value
+
+   If used in a response message, the "@target-uri" identifier refers to
+   the associated value of the request that triggered the response
+   message being signed.
+
+2.3.4.  Authority
 
    The "@authority" identifier refers to the authority component of the
    target of the HTTP request message.  In HTTP 1.1, this is usually
@@ -659,7 +694,11 @@ Table of Contents
 
    "@authority": www.example.com
 
-2.3.4.  Scheme
+   If used in a response message, the "@authority" identifier refers to
+   the associated value of the request that triggered the response
+   message being signed.
+
+2.3.5.  Scheme
 
    The "@scheme" identifier refers to the scheme of the target URL of
    the HTTP request message.  The value is the scheme as a string.
@@ -673,35 +712,65 @@ Table of Contents
 
    "@scheme": http
 
-2.3.5.  Request Origin
+   If used in a response message, the "@scheme" identifier refers to the
+   associated value of the request that triggered the response message
+   being signed.
 
-   The "@request-origin" identifier refers to the full origin component
-   of the HTTP request message.  The value is combination of the
-   absolute path and query components of the request URL.
+2.3.6.  Request Target
 
-   For example, the following request message:
+   The "@request-target" identifier refers to the full request target of
+   the HTTP request message.  The value of the request target can take
+   different forms, depending on the type of request.
+
+   The origin form value is combination of the absolute path and query
+   components of the request URL.  For example, the following request
+   message:
 
    POST /path?param=value HTTP/1.1
    Host: www.example.com
 
-   Would result in the following "@request-origin" value:
+   Would result in the following "@request-target" value:
 
-   "@request-origin": /path?param=value
+   "@request-target": /path?param=value
 
-   The following OPTIONS request message:
+   The following request to an HTTP proxy with the absolute-form value,
+   containing the fully qualified target URI:
+
+   GET https://www.example.com/path?param=value HTTP/1.1
+
+   Would result in the following "@request-target" value:
+
+   "@request-target": https://www.example.com/path?param=value
+
+   The following CONNECT request with an authority-form value,
+   containing the host and port of the target:
+
+   CONNECT www.example.com:80 HTTP/1.1
+   Host: www.example.com
+
+   Would result in the following "@request-target" value:
+
+   "@request-target": www.example.com:80
+
+   The following OPTIONS request message with the asterisk-form value,
+   containing a single asterisk "*" character:
 
    OPTIONS * HTTP/1.1
    Host: www.example.com
 
-   Would result in the following "@request-origin" value:
+   Would result in the following "@request-target" value:
 
-   "@request-origin": *
+   "@request-target": *
 
-2.3.6.  Path
+   If used in a response message, the "@request-target" identifier
+   refers to the associated value of the request that triggered the
+   response message being signed.
+
+2.3.7.  Path
 
    The "@path" identifier refers to the target path of the HTTP request
    message.  The value is the absolute path of the request target, with
-   no query parameters and no trailing "?" character.
+   no query component and no trailing "?" character.
 
    For example, the following request message:
 
@@ -712,9 +781,9 @@ Table of Contents
 
    "@path": /path
 
-2.3.7.  Query Components
+2.3.8.  Query Components
 
-   The "@query" identifier refers to the query parameters of the HTTP
+   The "@query" identifier refers to the query component of the HTTP
    request message.  When the identifier is used with no parameters, the
    value is the entire normalized query string, not including the
    leading "?" character.
@@ -728,11 +797,13 @@ Table of Contents
 
    "@query": param=value&foo=bar&baz=batman
 
-   The identifier supports an OPTIONAL "key" parameter containing the
-   name of a single query parameter.  When this parameter is present,
-   the value is the normalized key-value pair of the named query
-   parameter, not including any leading "?" characters or separating "&"
-   characters.
+   If the request uses HTML form parameters in the query string, this
+   identifier allows addressing of individual query parameters by using
+   an OPTIONAL "key" parameter containing the name of a single query
+   parameter.  When this parameter is present, the value is the
+   normalized key-value pair of the named query parameter, separated by
+   an equals sign, not including any leading "?" characters or
+   separating "&" characters.
 
    POST /path?param=value&foo=bar&baz=batman HTTP/1.1
    Host: www.example.com
@@ -742,7 +813,11 @@ Table of Contents
    "@query";key="baz": baz=batman
    "@query";key="param": param=value
 
-2.3.8.  Status Code
+   If used in a response message, the "@query" identifier refers to the
+   associated value of the request that triggered the response message
+   being signed.
+
+2.3.9.  Status Code
 
    The "@status-code" identifier refers to the HTTP status code of a
    response message.  The value is the serialized integer of the HTTP
@@ -756,6 +831,8 @@ Table of Contents
    Would result in the following "@status-code" value:
 
    "@status-code": 200
+
+   This identifier MUST NOT be used in a request message.
 
 2.4.  Creating the Signature Input String
 
@@ -1464,17 +1541,19 @@ Table of Contents
       +-------------------+--------+--------------------------------+
       | @method           | Active | Section 2.3.2 of this document |
       +-------------------+--------+--------------------------------+
-      | @authority        | Active | Section 2.3.3 of this document |
+      | @authority        | Active | Section 2.3.4 of this document |
       +-------------------+--------+--------------------------------+
-      | @scheme           | Active | Section 2.3.4 of this document |
+      | @scheme           | Active | Section 2.3.5 of this document |
       +-------------------+--------+--------------------------------+
-      | @request-origin   | Active | Section 2.3.5 of this document |
+      | @target-uri       | Active | Section 2.3.3 of this document |
       +-------------------+--------+--------------------------------+
-      | @path             | Active | Section 2.3.6 of this document |
+      | @request-target   | Active | Section 2.3.6 of this document |
       +-------------------+--------+--------------------------------+
-      | @query-param      | Active | Section 2.3.7 of this document |
+      | @path             | Active | Section 2.3.7 of this document |
       +-------------------+--------+--------------------------------+
-      | @status-code      | Active | Section 2.3.8 of this document |
+      | @query-param      | Active | Section 2.3.8 of this document |
+      +-------------------+--------+--------------------------------+
+      | @status-code      | Active | Section 2.3.9 of this document |
       +-------------------+--------+--------------------------------+
 
          Table 4: Initial contents of the HTTP Signature Specialty
@@ -1900,8 +1979,8 @@ Document History
 
       -  -06
 
-         o  Define new specialty content identifier, remove request-
-            target identifiers.
+         o  Define new specialty content identifiers, re-defined
+            request-target identifier.
 
       -  -05
 
